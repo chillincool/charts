@@ -10,21 +10,16 @@ Please refer to Helm's [documentation](https://helm.sh/docs) to get started.
 Once Helm has been set up correctly, add the repo as follows:
 
 ```bash
-helm repo add chillincool https://chillincool.github.io/charts
+# For Helm 3.8.0+, charts are available as OCI artifacts in GHCR
+helm pull oci://ghcr.io/chillincool/charts/<chart-name> --version <version>
 ```
 
-If you had already added this repo earlier, run `helm repo update` to retrieve the latest versions of the packages.
-
-To search for available charts:
-
-```bash
-helm search repo chillincool
-```
+To search for available charts, visit the [GitHub Container Registry packages](https://github.com/chillincool?tab=packages&repo_name=charts).
 
 To install a chart:
 
 ```bash
-helm install my-release chillincool/<chart-name>
+helm install my-release oci://ghcr.io/chillincool/charts/<chart-name> --version <version>
 ```
 
 To uninstall the chart:
@@ -43,28 +38,28 @@ This repository includes the following Helm charts:
 Smart PVR for newsgroup and bittorrent users - TV series management and automation.
 
 ```bash
-helm install my-sonarr chillincool/sonarr
+helm install my-sonarr oci://ghcr.io/chillincool/charts/sonarr --version 0.1.0
 ```
 
 #### Radarr
 A movie collection manager for Usenet and BitTorrent users - automated movie downloading and management.
 
 ```bash
-helm install my-radarr chillincool/radarr
+helm install my-radarr oci://ghcr.io/chillincool/charts/radarr --version 0.1.0
 ```
 
 #### Lidarr
 A music collection manager for Usenet and BitTorrent users - automated music downloading and management.
 
 ```bash
-helm install my-lidarr chillincool/lidarr
+helm install my-lidarr oci://ghcr.io/chillincool/charts/lidarr --version 0.1.0
 ```
 
 #### Prowlarr
 An indexer manager/proxy for Usenet and BitTorrent - manages indexers for the *arr suite.
 
 ```bash
-helm install my-prowlarr chillincool/prowlarr
+helm install my-prowlarr oci://ghcr.io/chillincool/charts/prowlarr --version 0.1.0
 ```
 
 ### Common Library Chart
@@ -88,7 +83,7 @@ To use the common library in your chart, add it as a dependency in your `Chart.y
 dependencies:
   - name: common
     version: "1.x.x"
-    repository: "https://chillincool.github.io/charts"
+    repository: "oci://ghcr.io/chillincool/charts"
 ```
 
 Then use the templates in your chart:
@@ -106,7 +101,7 @@ Then use the templates in your chart:
 This repository includes GitHub Actions workflows for:
 
 1. **Linting and Testing** (`lint-test.yml`) - Runs on pull requests to validate charts
-2. **Release** (`release.yml`) - Publishes charts to GitHub Pages on push to main
+2. **Release** (`release.yml`) - Publishes charts to GitHub Container Registry (GHCR) as OCI artifacts on push to main
 3. **Container Updates** (`update-chart.yml`) - Updates chart versions when new container images are released
 
 ### Linking to Container Package Releases
