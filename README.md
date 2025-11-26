@@ -118,8 +118,10 @@ jobs:
           token: ${{ secrets.CHARTS_REPO_TOKEN }}
           repository: chillincool/charts
           event-type: container-release
-          client-payload: '{"chart_name": "${{ github.event.registry_package.name }}", "image_tag": "${{ github.event.registry_package.package_version.container_metadata.tag.name }}"}'
+          client-payload: '{"chart_name": "${{ github.event.registry_package.name }}", "image_tag": "${{ github.event.registry_package.package_version.version }}"}'
 ```
+
+**Note:** The `image_tag` value may need to be adjusted based on your package versioning scheme. For container packages, you may need to extract or transform the version value to match your tagging convention.
 
 **Note:** You'll need to create a Personal Access Token (PAT) with `repo` scope and add it as a secret named `CHARTS_REPO_TOKEN` in the repository where you add this workflow.
 
