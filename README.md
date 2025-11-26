@@ -116,8 +116,13 @@ jobs:
         id: package
         run: |
           echo "name=${{ github.event.registry_package.name }}" >> $GITHUB_OUTPUT
-          # Extract version/tag - adjust based on your package metadata structure
-          echo "version=${{ github.event.registry_package.package_version.name }}" >> $GITHUB_OUTPUT
+          # The version field structure varies - use package_version.version or package_version.name
+          # Adjust based on your actual package structure
+          VERSION="${{ github.event.registry_package.package_version.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${{ github.event.registry_package.package_version.name }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Trigger chart update
         uses: peter-evans/repository-dispatch@v3
