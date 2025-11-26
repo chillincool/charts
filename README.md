@@ -77,11 +77,15 @@ This repository includes GitHub Actions workflows for:
 2. **Release** (`release.yml`) - Publishes charts to GitHub Pages on push to main
 3. **Container Updates** (`update-chart.yml`) - Updates chart versions when new container images are released
 
-### Linking to the Containers Repo
+### Linking to Container Package Releases
 
-The [chillincool/containers](https://github.com/chillincool/containers) repository automatically builds and publishes container images on push to main. To keep charts synchronized with container updates, you can manually trigger chart updates or integrate this workflow into your containers repository.
+Container images are published as GitHub Container Registry (GHCR) packages under the [chillincool organization](https://github.com/orgs/chillincool/packages). The [chillincool/containers](https://github.com/chillincool/containers) repository provides the build infrastructure that publishes these packages.
 
-To automatically update charts when new container images are built, add the following step to your containers repository's CI workflow (after successful image push):
+To keep charts synchronized with container package updates, you have two options:
+
+#### Option 1: Trigger from Container Build Workflow
+
+Add the following step to your container build workflow (e.g., in the `containers` repository CI, after successful image push):
 
 ```yaml
 - name: Trigger chart update
@@ -93,7 +97,31 @@ To automatically update charts when new container images are built, add the foll
     client-payload: '{"chart_name": "your-app-name", "image_tag": "${{ github.sha }}"}'
 ```
 
-Note: You'll need to create a Personal Access Token (PAT) with `repo` scope and add it as a secret named `CHARTS_REPO_TOKEN` in your containers repository.
+#### Option 2: Trigger from Package Publication Events
+
+Create a workflow in a repository with access to organization packages that triggers on package publication:
+
+```yaml
+name: Trigger Chart Update on Package Release
+
+on:
+  registry_package:
+    types: [published, updated]
+
+jobs:
+  trigger-chart-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger chart update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.CHARTS_REPO_TOKEN }}
+          repository: chillincool/charts
+          event-type: container-release
+          client-payload: '{"chart_name": "${{ github.event.registry_package.name }}", "image_tag": "${{ github.event.registry_package.package_version.container_metadata.tag.name }}"}'
+```
+
+**Note:** You'll need to create a Personal Access Token (PAT) with `repo` scope and add it as a secret named `CHARTS_REPO_TOKEN` in the repository where you add this workflow.
 
 Alternatively, you can manually trigger chart updates using the workflow dispatch in this repository's `update-chart.yml` workflow.
 
