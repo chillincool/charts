@@ -35,6 +35,38 @@ helm delete my-release
 
 ## Charts
 
+This repository includes the following Helm charts:
+
+### Application Charts
+
+#### Sonarr
+Smart PVR for newsgroup and bittorrent users - TV series management and automation.
+
+```bash
+helm install my-sonarr chillincool/sonarr
+```
+
+#### Radarr
+A movie collection manager for Usenet and BitTorrent users - automated movie downloading and management.
+
+```bash
+helm install my-radarr chillincool/radarr
+```
+
+#### Lidarr
+A music collection manager for Usenet and BitTorrent users - automated music downloading and management.
+
+```bash
+helm install my-lidarr chillincool/lidarr
+```
+
+#### Prowlarr
+An indexer manager/proxy for Usenet and BitTorrent - manages indexers for the *arr suite.
+
+```bash
+helm install my-prowlarr chillincool/prowlarr
+```
+
 ### Common Library Chart
 
 The `common` chart is a library chart containing shared templates and helpers that other charts can use as a dependency. This keeps things DRY (Don't Repeat Yourself) by providing reusable templates for:

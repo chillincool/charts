@@ -1,0 +1,21 @@
+apiVersion: v2
+name: lidarr
+description: A Helm chart for Lidarr - A music collection manager for Usenet and BitTorrent users
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - lidarr
+  - media
+  - music
+  - automation
+home: https://github.com/chillincool/charts
+sources:
+  - https://github.com/chillincool/containers
+  - https://github.com/Lidarr/Lidarr
+maintainers:
+  - name: chillincool
+dependencies:
+  - name: common
+    version: "1.0.0"
+    repository: "file://../common"
