@@ -1,0 +1,13 @@
+apiVersion: v2
+name: common
+description: A library chart for Helm to share common templates and helpers
+type: library
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - common
+  - library
+  - helper
+home: https://github.com/chillincool/charts
+maintainers:
+  - name: chillincool
