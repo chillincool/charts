@@ -106,22 +106,29 @@ name: Trigger Chart Update on Package Release
 
 on:
   registry_package:
-    types: [published, updated]
+    types: [published]
 
 jobs:
   trigger-chart-update:
     runs-on: ubuntu-latest
     steps:
+      - name: Extract package info
+        id: package
+        run: |
+          echo "name=${{ github.event.registry_package.name }}" >> $GITHUB_OUTPUT
+          # Extract version/tag - adjust based on your package metadata structure
+          echo "version=${{ github.event.registry_package.package_version.name }}" >> $GITHUB_OUTPUT
+      
       - name: Trigger chart update
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.CHARTS_REPO_TOKEN }}
           repository: chillincool/charts
           event-type: container-release
-          client-payload: '{"chart_name": "${{ github.event.registry_package.name }}", "image_tag": "${{ github.event.registry_package.package_version.version }}"}'
+          client-payload: '{"chart_name": "${{ steps.package.outputs.name }}", "image_tag": "${{ steps.package.outputs.version }}"}'
 ```
 
-**Note:** The `image_tag` value may need to be adjusted based on your package versioning scheme. For container packages, you may need to extract or transform the version value to match your tagging convention.
+**Note:** The `registry_package` event structure may vary depending on your package configuration. You may need to adjust the extraction logic to match your package metadata and tagging convention. The example above uses `package_version.name` which typically contains the version/tag for container packages.
 
 **Note:** You'll need to create a Personal Access Token (PAT) with `repo` scope and add it as a secret named `CHARTS_REPO_TOKEN` in the repository where you add this workflow.
 
