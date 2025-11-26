@@ -77,32 +77,25 @@ This repository includes GitHub Actions workflows for:
 2. **Release** (`release.yml`) - Publishes charts to GitHub Pages on push to main
 3. **Container Updates** (`update-chart.yml`) - Updates chart versions when new container images are released
 
-### Linking to Your Containers Repo
+### Linking to the Containers Repo
 
-To automatically update charts when new container images are released, add the following workflow to your containers repository:
+The [chillincool/containers](https://github.com/chillincool/containers) repository automatically builds and publishes container images on push to main. To keep charts synchronized with container updates, you can manually trigger chart updates or integrate this workflow into your containers repository.
+
+To automatically update charts when new container images are built, add the following step to your containers repository's CI workflow (after successful image push):
 
 ```yaml
-name: Trigger Chart Update
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  trigger-chart-update:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger chart update
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.CHARTS_REPO_TOKEN }}
-          repository: chillincool/charts
-          event-type: container-release
-          client-payload: '{"chart_name": "your-chart-name", "image_tag": "${{ github.ref_name }}"}'
+- name: Trigger chart update
+  uses: peter-evans/repository-dispatch@v3
+  with:
+    token: ${{ secrets.CHARTS_REPO_TOKEN }}
+    repository: chillincool/charts
+    event-type: container-release
+    client-payload: '{"chart_name": "your-app-name", "image_tag": "${{ github.sha }}"}'
 ```
 
 Note: You'll need to create a Personal Access Token (PAT) with `repo` scope and add it as a secret named `CHARTS_REPO_TOKEN` in your containers repository.
+
+Alternatively, you can manually trigger chart updates using the workflow dispatch in this repository's `update-chart.yml` workflow.
 
 ## Contributing
 
