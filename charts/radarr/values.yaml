@@ -1,0 +1,111 @@
+# Default values for radarr
+replicaCount: 1
+
+image:
+  registry: ghcr.io
+  repository: chillincool/radarr
+  # tag defaults to appVersion from Chart.yaml if not specified
+  # For production, use a specific SHA or version tag, e.g., "sha-abc123"
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 65534
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  readOnlyRootFilesystem: false
+
+containerPort: 7878
+
+service:
+  type: ClusterIP
+  port: 7878
+  targetPort: http
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: radarr.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: radarr-tls
+  #    hosts:
+  #      - radarr.local
+
+resources: {}
+  # limits:
+  #   cpu: 1000m
+  #   memory: 1Gi
+  # requests:
+  #   cpu: 100m
+  #   memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+livenessProbe:
+  httpGet:
+    path: /ping
+    port: http
+  initialDelaySeconds: 45
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ping
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Environment variables
+env: []
+
+# Volumes for persistent storage
+volumes:
+  - name: config
+    emptyDir: {}
+  # For production, use a persistent volume claim:
+  # - name: config
+  #   persistentVolumeClaim:
+  #     claimName: radarr-config
+  # - name: media
+  #   persistentVolumeClaim:
+  #     claimName: media
+
+volumeMounts:
+  - name: config
+    mountPath: /config
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
