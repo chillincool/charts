@@ -4,6 +4,8 @@ replicaCount: 1
 image:
   registry: ghcr.io
   repository: chillincool/sonarr
+  # tag defaults to appVersion from Chart.yaml if not specified
+  # For production, use a specific SHA or version tag, e.g., "sha-abc123"
   tag: latest
   pullPolicy: IfNotPresent
 
