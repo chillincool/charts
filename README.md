@@ -10,7 +10,7 @@ Please refer to Helm's [documentation](https://helm.sh/docs) to get started.
 Once Helm has been set up correctly, add the repo as follows:
 
 ```bash
-helm repo add chrismsykes https://chrismsykes.github.io/charts
+helm repo add chillincool https://chillincool.github.io/charts
 ```
 
 If you had already added this repo earlier, run `helm repo update` to retrieve the latest versions of the packages.
@@ -18,13 +18,13 @@ If you had already added this repo earlier, run `helm repo update` to retrieve t
 To search for available charts:
 
 ```bash
-helm search repo chrismsykes
+helm search repo chillincool
 ```
 
 To install a chart:
 
 ```bash
-helm install my-release chrismsykes/<chart-name>
+helm install my-release chillincool/<chart-name>
 ```
 
 To uninstall the chart:
@@ -56,7 +56,7 @@ To use the common library in your chart, add it as a dependency in your `Chart.y
 dependencies:
   - name: common
     version: "1.x.x"
-    repository: "https://chrismsykes.github.io/charts"
+    repository: "https://chillincool.github.io/charts"
 ```
 
 Then use the templates in your chart:
@@ -97,7 +97,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.CHARTS_REPO_TOKEN }}
-          repository: chrismsykes/charts
+          repository: chillincool/charts
           event-type: container-release
           client-payload: '{"chart_name": "your-chart-name", "image_tag": "${{ github.ref_name }}"}'
 ```
