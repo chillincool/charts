@@ -50,6 +50,9 @@ jobs:
 
       - name: Package and Push Charts
         run: |
+          # Create temporary directory for packaged charts
+          CHARTS_DIR=$(mktemp -d)
+          
           for chart in charts/*/; do
             chart_name=$(basename "$chart")
             # Skip if not a valid chart directory
@@ -64,16 +67,19 @@ jobs:
             helm dependency update "$chart"
             
             # Package the chart
-            helm package "$chart" -d /tmp/charts
+            helm package "$chart" -d "$CHARTS_DIR"
             
-            # Get chart version
-            chart_version=$(grep '^version:' "$chart/Chart.yaml" | awk '{print $2}' | tr -d '"')
+            # Get chart version using helm show chart
+            chart_version=$(helm show chart "$chart" | grep '^version:' | awk '{print $2}')
             
             # Push to GHCR
-            helm push "/tmp/charts/${chart_name}-${chart_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
+            helm push "${CHARTS_DIR}/${chart_name}-${chart_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
             
             echo "Successfully pushed ${chart_name}:${chart_version} to GHCR"
           done
+          
+          # Cleanup temporary directory
+          rm -rf "$CHARTS_DIR"
 
       - name: Logout from GitHub Container Registry
         if: always()
