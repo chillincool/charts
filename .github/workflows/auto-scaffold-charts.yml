@@ -18,8 +18,8 @@ on:
         default: /health
         type: string
   schedule:
-    # Run daily at 2 AM UTC to scan GHCR for new containers
-    - cron: 0 2 * * *
+    # Run every 15 minutes to quickly catch new containers
+    - cron: '*/15 * * * *'
 
 permissions:
   contents: write

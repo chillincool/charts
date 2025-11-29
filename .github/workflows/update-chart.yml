@@ -12,8 +12,8 @@ on:
         required: true
         type: string
   schedule:
-    # Run daily at 3 AM UTC to check for updated containers
-    - cron: '0 3 * * *'
+    # Run every 15 minutes to check for updated containers
+    - cron: '*/15 * * * *'
 
 permissions:
   contents: write
