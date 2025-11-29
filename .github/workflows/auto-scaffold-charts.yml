@@ -1,0 +1,341 @@
+name: Auto-Scaffold New Charts
+
+on:
+  workflow_dispatch:
+    inputs:
+      container_name:
+        description: Name of the new container to create chart for
+        required: true
+        type: string
+      container_port:
+        description: Container port (default 8080)
+        required: false
+        default: '8080'
+        type: string
+      health_check_path:
+        description: Health check path (default /health)
+        required: false
+        default: /health
+        type: string
+  schedule:
+    # Run daily at 2 AM UTC to scan GHCR for new containers
+    - cron: 0 2 * * *
+
+permissions:
+  contents: write
+  packages: read
+  pull-requests: write
+
+jobs:
+  scaffold-charts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Get list of published containers from GHCR
+        id: containers
+        run: |
+          # If manually triggered with specific container
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "containers=${{ inputs.container_name }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # Scan GHCR for all container packages
+          echo "Scanning GHCR for container packages..."
+          
+          # Get list of packages from GitHub API
+          PACKAGES=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/users/${{ github.repository_owner }}/packages?package_type=container&per_page=100" \
+            | jq -r '.[].name' | grep -v '^charts/' || echo "")
+          
+          if [[ -z "$PACKAGES" ]]; then
+            echo "No container packages found in GHCR"
+            echo "containers=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # Convert to comma-separated list
+          CONTAINER_LIST=$(echo "$PACKAGES" | tr '\n' ',' | sed 's/,$//')
+          echo "containers=$CONTAINER_LIST" >> "$GITHUB_OUTPUT"
+          echo "Found containers: $CONTAINER_LIST"
+
+      - name: Create charts for new containers
+        id: create_charts
+        run: |
+          if [[ -z "${{ steps.containers.outputs.containers }}" ]]; then
+            echo "No containers to process"
+            echo "charts_created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # Split containers by comma
+          IFS=',' read -ra CONTAINERS <<< "${{ steps.containers.outputs.containers }}"
+          
+          CHARTS_CREATED=false
+          CREATED_CHARTS=""
+          
+          for CONTAINER in "${CONTAINERS[@]}"; do
+            CONTAINER=$(echo "$CONTAINER" | xargs) # trim whitespace
+            
+            if [[ -z "$CONTAINER" ]]; then
+              continue
+            fi
+            
+            CHART_DIR="charts/$CONTAINER"
+            
+            # Skip if chart already exists
+            if [[ -d "$CHART_DIR" ]]; then
+              echo "Chart for $CONTAINER already exists, skipping..."
+              continue
+            fi
+            
+            # Skip the 'common' library chart
+            if [[ "$CONTAINER" == "common" ]]; then
+              continue
+            fi
+            
+            echo "Creating new chart for: $CONTAINER"
+            
+            # Create chart directory structure
+            mkdir -p "$CHART_DIR/templates"
+            
+            # Determine container port and health check
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              CONTAINER_PORT="${{ inputs.container_port }}"
+              HEALTH_PATH="${{ inputs.health_check_path }}"
+            else
+              # Use well-documented default ports for known apps
+              case "$CONTAINER" in
+                sonarr)
+                  CONTAINER_PORT="8989"
+                  HEALTH_PATH="/ping"
+                  ;;
+                radarr)
+                  CONTAINER_PORT="7878"
+                  HEALTH_PATH="/ping"
+                  ;;
+                lidarr)
+                  CONTAINER_PORT="8686"
+                  HEALTH_PATH="/ping"
+                  ;;
+                prowlarr)
+                  CONTAINER_PORT="9696"
+                  HEALTH_PATH="/ping"
+                  ;;
+                jackett)
+                  CONTAINER_PORT="9117"
+                  HEALTH_PATH="/health"
+                  ;;
+                jellyfin)
+                  CONTAINER_PORT="8096"
+                  HEALTH_PATH="/health"
+                  ;;
+                plex)
+                  CONTAINER_PORT="32400"
+                  HEALTH_PATH="/web"
+                  ;;
+                tautulli)
+                  CONTAINER_PORT="8181"
+                  HEALTH_PATH="/status"
+                  ;;
+                overseerr)
+                  CONTAINER_PORT="5055"
+                  HEALTH_PATH="/api/v1/status"
+                  ;;
+                requestrr)
+                  CONTAINER_PORT="4545"
+                  HEALTH_PATH="/health"
+                  ;;
+                *)
+                  # Generic defaults for unknown apps
+                  CONTAINER_PORT="8080"
+                  HEALTH_PATH="/health"
+                  ;;
+              esac
+            fi
+            
+            # Create Chart.yaml
+            cat > "$CHART_DIR/Chart.yaml" <<EOF
+apiVersion: v2
+name: $CONTAINER
+description: A Helm chart for $CONTAINER
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - $CONTAINER
+home: https://github.com/${{ github.repository_owner }}/charts
+sources:
+  - https://github.com/${{ github.repository_owner }}/containers
+maintainers:
+  - name: ${{ github.repository_owner }}
+dependencies:
+  - name: common
+    version: "1.0.0"
+    repository: "file://../common"
+EOF
+            
+            # Create values.yaml
+            cat > "$CHART_DIR/values.yaml" <<EOF
+# Default values for $CONTAINER
+replicaCount: 1
+
+image:
+  registry: ghcr.io
+  repository: ${{ github.repository_owner }}/$CONTAINER
+  # tag defaults to appVersion from Chart.yaml if not specified
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 65534
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  readOnlyRootFilesystem: false
+
+containerPort: $CONTAINER_PORT
+
+service:
+  type: ClusterIP
+  port: $CONTAINER_PORT
+  targetPort: http
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: ${CONTAINER}.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+livenessProbe:
+  httpGet:
+    path: $HEALTH_PATH
+    port: http
+  initialDelaySeconds: 45
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: $HEALTH_PATH
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+env: []
+
+volumes:
+  - name: config
+    emptyDir: {}
+
+volumeMounts:
+  - name: config
+    mountPath: /config
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+EOF
+            
+            # Create template files that use the common library
+            cat > "$CHART_DIR/templates/deployment.yaml" <<'EOF'
+{{- include "common.deployment" . }}
+EOF
+            
+            cat > "$CHART_DIR/templates/service.yaml" <<'EOF'
+{{- include "common.service" . }}
+EOF
+            
+            cat > "$CHART_DIR/templates/serviceaccount.yaml" <<'EOF'
+{{- include "common.serviceaccount" . }}
+EOF
+            
+            cat > "$CHART_DIR/templates/ingress.yaml" <<'EOF'
+{{- include "common.ingress" . }}
+EOF
+            
+            cat > "$CHART_DIR/templates/hpa.yaml" <<'EOF'
+{{- include "common.hpa" . }}
+EOF
+            
+            echo "✓ Created chart for $CONTAINER"
+            CHARTS_CREATED=true
+            
+            if [[ -z "$CREATED_CHARTS" ]]; then
+              CREATED_CHARTS="$CONTAINER"
+            else
+              CREATED_CHARTS="$CREATED_CHARTS, $CONTAINER"
+            fi
+          done
+          
+          echo "charts_created=$CHARTS_CREATED" >> "$GITHUB_OUTPUT"
+          echo "created_charts=$CREATED_CHARTS" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request
+        if: steps.create_charts.outputs.charts_created == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "feat: auto-scaffold charts for new containers"
+          title: "feat: auto-scaffold charts for new containers"
+          body: |
+            🤖 Automated chart scaffolding for newly discovered containers.
+            
+            **New charts created:**
+            ${{ steps.create_charts.outputs.created_charts }}
+            
+            These charts were automatically generated based on the common library template.
+            Please review and adjust the following if needed:
+            - Container port (`containerPort` in values.yaml)
+            - Health check endpoints (`livenessProbe` and `readinessProbe`)
+            - Resource limits
+            - Volume mounts and persistent storage requirements
+            - Any application-specific configurations
+            
+            ---
+            Generated by the auto-scaffold-charts workflow
+          branch: "auto-scaffold-charts-${{ github.run_number }}"
+          base: main
+          labels: |
+            automated
+            new-chart

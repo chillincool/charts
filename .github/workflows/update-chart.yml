@@ -1,8 +1,6 @@
 name: Update Chart on Container Release
 
 on:
-  repository_dispatch:
-    types: [container-release]
   workflow_dispatch:
     inputs:
       chart_name:
@@ -13,6 +11,9 @@ on:
         description: 'New container image tag'
         required: true
         type: string
+  schedule:
+    # Run daily at 3 AM UTC to check for updated containers
+    - cron: '0 3 * * *'
 
 permissions:
   contents: write
@@ -32,18 +33,67 @@ jobs:
         with:
           version: v3.14.0
 
-      - name: Set chart name and tag
+      - name: Get charts to update
         id: vars
         run: |
-          if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
-            echo "chart_name=${{ github.event.client_payload.chart_name }}" >> "$GITHUB_OUTPUT"
-            echo "image_tag=${{ github.event.client_payload.image_tag }}" >> "$GITHUB_OUTPUT"
-          else
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger - update specific chart
             echo "chart_name=${{ inputs.chart_name }}" >> "$GITHUB_OUTPUT"
             echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            # Scheduled run - check all charts for updates
+            echo "Checking for container updates..."
+            
+            # Get all charts (excluding common library)
+            CHARTS=$(find charts -maxdepth 1 -mindepth 1 -type d ! -name common -exec basename {} \;)
+            
+            for CHART in $CHARTS; do
+              CHART_PATH="charts/$CHART/Chart.yaml"
+              if [[ ! -f "$CHART_PATH" ]]; then
+                continue
+              fi
+              
+              # Get current appVersion from chart
+              CURRENT_VERSION=$(grep '^appVersion:' "$CHART_PATH" | awk '{print $2}' | tr -d '"')
+              
+              # Get repository from values.yaml
+              REPO=$(grep 'repository:' "charts/$CHART/values.yaml" | head -1 | awk '{print $2}')
+              
+              if [[ -z "$REPO" ]]; then
+                continue
+              fi
+              
+              # Extract container name from repo (e.g., chillincool/sonarr -> sonarr)
+              CONTAINER_NAME=$(basename "$REPO")
+              
+              # Get latest tag from GHCR
+              LATEST_TAG=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/users/${{ github.repository_owner }}/packages/container/$CONTAINER_NAME/versions" \
+                | jq -r '.[0].metadata.container.tags[0]' 2>/dev/null || echo "")
+              
+              if [[ -n "$LATEST_TAG" && "$LATEST_TAG" != "null" && "$LATEST_TAG" != "$CURRENT_VERSION" ]]; then
+                echo "Update available for $CHART: $CURRENT_VERSION -> $LATEST_TAG"
+                echo "chart_name=$CHART" >> "$GITHUB_OUTPUT"
+                echo "image_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+                # Only update one chart per run to avoid conflicts
+                exit 0
+              fi
+            done
+            
+            echo "No updates needed"
+            echo "chart_name=" >> "$GITHUB_OUTPUT"
+            echo "image_tag=" >> "$GITHUB_OUTPUT"
           fi
+      
+      - name: Skip if no updates
+        if: steps.vars.outputs.chart_name == ''
+        run: |
+          echo "No chart updates needed, exiting"
+          exit 0
 
       - name: Update Chart appVersion
+        if: steps.vars.outputs.chart_name != ''
         run: |
           CHART_PATH="charts/${{ steps.vars.outputs.chart_name }}/Chart.yaml"
           if [[ -f "$CHART_PATH" ]]; then
@@ -59,6 +109,7 @@ jobs:
           fi
 
       - name: Create Pull Request
+        if: steps.vars.outputs.chart_name != ''
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "chore(${{ steps.vars.outputs.chart_name }}): update to ${{ steps.vars.outputs.image_tag }}"
