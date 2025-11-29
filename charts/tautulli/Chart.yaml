@@ -1,0 +1,17 @@
+apiVersion: v2
+name: tautulli
+description: A Helm chart for tautulli
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - tautulli
+home: https://github.com/chillincool/charts
+sources:
+  - https://github.com/chillincool/containers
+maintainers:
+  - name: chillincool
+dependencies:
+  - name: common
+    version: "1.0.0"
+    repository: "file://../common"
