@@ -112,6 +112,7 @@ jobs:
         if: steps.vars.outputs.chart_name != ''
         uses: peter-evans/create-pull-request@v6
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore(${{ steps.vars.outputs.chart_name }}): update to ${{ steps.vars.outputs.image_tag }}"
           title: "chore(${{ steps.vars.outputs.chart_name }}): update to ${{ steps.vars.outputs.image_tag }}"
           body: |
@@ -121,3 +122,5 @@ jobs:
             - New appVersion: `${{ steps.vars.outputs.image_tag }}`
           branch: "chart-update/${{ steps.vars.outputs.chart_name }}-${{ steps.vars.outputs.image_tag }}"
           base: main
+          add-paths: |
+            charts/*

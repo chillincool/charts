@@ -25,6 +25,9 @@ permissions:
   contents: write
   packages: read
   pull-requests: write
+  
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   scaffold-charts:
@@ -216,6 +219,7 @@ jobs:
         if: steps.create_charts.outputs.charts_created == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "feat: auto-scaffold charts for new containers"
           title: "feat: auto-scaffold charts for new containers"
           body: |
@@ -239,3 +243,5 @@ jobs:
           labels: |
             automated
             new-chart
+          add-paths: |
+            charts/*
