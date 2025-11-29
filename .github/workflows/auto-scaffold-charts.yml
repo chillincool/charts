@@ -164,141 +164,40 @@ jobs:
               esac
             fi
             
-            # Create Chart.yaml
             REPO_OWNER="${{ github.repository_owner }}"
-            cat > "$CHART_DIR/Chart.yaml" <<EOF
-apiVersion: v2
-name: $CONTAINER
-description: A Helm chart for $CONTAINER
-type: application
-version: 0.1.0
-appVersion: "latest"
-keywords:
-  - $CONTAINER
-home: https://github.com/$REPO_OWNER/charts
-sources:
-  - https://github.com/$REPO_OWNER/containers
-maintainers:
-  - name: $REPO_OWNER
-dependencies:
-  - name: common
-    version: "1.0.0"
-    repository: "file://../common"
-EOF
             
-            # Create values.yaml
-            cat > "$CHART_DIR/values.yaml" <<EOF
-# Default values for $CONTAINER
-replicaCount: 1
-
-image:
-  registry: ghcr.io
-  repository: $REPO_OWNER/$CONTAINER
-  # tag defaults to appVersion from Chart.yaml if not specified
-  tag: latest
-  pullPolicy: IfNotPresent
-
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-
-podSecurityContext:
-  fsGroup: 65534
-
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 65534
-  runAsGroup: 65534
-  readOnlyRootFilesystem: false
-
-containerPort: $CONTAINER_PORT
-
-service:
-  type: ClusterIP
-  port: $CONTAINER_PORT
-  targetPort: http
-
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: ${CONTAINER}.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-
-resources: {}
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-
-livenessProbe:
-  httpGet:
-    path: $HEALTH_PATH
-    port: http
-  initialDelaySeconds: 45
-  periodSeconds: 30
-  timeoutSeconds: 10
-  failureThreshold: 3
-
-readinessProbe:
-  httpGet:
-    path: $HEALTH_PATH
-    port: http
-  initialDelaySeconds: 15
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-env: []
-
-volumes:
-  - name: config
-    emptyDir: {}
-
-volumeMounts:
-  - name: config
-    mountPath: /config
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-EOF
+            # Create Chart.yaml using printf to avoid heredoc issues
+            printf 'apiVersion: v2\n' > "$CHART_DIR/Chart.yaml"
+            printf 'name: %s\n' "$CONTAINER" >> "$CHART_DIR/Chart.yaml"
+            printf 'description: A Helm chart for %s\n' "$CONTAINER" >> "$CHART_DIR/Chart.yaml"
+            printf 'type: application\n' >> "$CHART_DIR/Chart.yaml"
+            printf 'version: 0.1.0\n' >> "$CHART_DIR/Chart.yaml"
+            printf 'appVersion: "latest"\n' >> "$CHART_DIR/Chart.yaml"
+            printf 'keywords:\n' >> "$CHART_DIR/Chart.yaml"
+            printf '  - %s\n' "$CONTAINER" >> "$CHART_DIR/Chart.yaml"
+            printf 'home: https://github.com/%s/charts\n' "$REPO_OWNER" >> "$CHART_DIR/Chart.yaml"
+            printf 'sources:\n' >> "$CHART_DIR/Chart.yaml"
+            printf '  - https://github.com/%s/containers\n' "$REPO_OWNER" >> "$CHART_DIR/Chart.yaml"
+            printf 'maintainers:\n' >> "$CHART_DIR/Chart.yaml"
+            printf '  - name: %s\n' "$REPO_OWNER" >> "$CHART_DIR/Chart.yaml"
+            printf 'dependencies:\n' >> "$CHART_DIR/Chart.yaml"
+            printf '  - name: common\n' >> "$CHART_DIR/Chart.yaml"
+            printf '    version: "1.0.0"\n' >> "$CHART_DIR/Chart.yaml"
+            printf '    repository: "file://../common"\n' >> "$CHART_DIR/Chart.yaml"
+            
+            # Create values.yaml - copy from existing chart and modify
+            cp charts/sonarr/values.yaml "$CHART_DIR/values.yaml"
+            sed -i.bak "s/sonarr/$CONTAINER/g" "$CHART_DIR/values.yaml"
+            sed -i.bak "s/8989/$CONTAINER_PORT/g" "$CHART_DIR/values.yaml"
+            sed -i.bak "s|/ping|$HEALTH_PATH|g" "$CHART_DIR/values.yaml"
+            rm "$CHART_DIR/values.yaml.bak"
             
             # Create template files that use the common library
-            cat > "$CHART_DIR/templates/deployment.yaml" <<'EOF'
-{{- include "common.deployment" . }}
-EOF
-            
-            cat > "$CHART_DIR/templates/service.yaml" <<'EOF'
-{{- include "common.service" . }}
-EOF
-            
-            cat > "$CHART_DIR/templates/serviceaccount.yaml" <<'EOF'
-{{- include "common.serviceaccount" . }}
-EOF
-            
-            cat > "$CHART_DIR/templates/ingress.yaml" <<'EOF'
-{{- include "common.ingress" . }}
-EOF
-            
-            cat > "$CHART_DIR/templates/hpa.yaml" <<'EOF'
-{{- include "common.hpa" . }}
-EOF
+            echo '{{- include "common.deployment" . }}' > "$CHART_DIR/templates/deployment.yaml"
+            echo '{{- include "common.service" . }}' > "$CHART_DIR/templates/service.yaml"
+            echo '{{- include "common.serviceaccount" . }}' > "$CHART_DIR/templates/serviceaccount.yaml"
+            echo '{{- include "common.ingress" . }}' > "$CHART_DIR/templates/ingress.yaml"
+            echo '{{- include "common.hpa" . }}' > "$CHART_DIR/templates/hpa.yaml"
             
             echo "✓ Created chart for $CONTAINER"
             CHARTS_CREATED=true
