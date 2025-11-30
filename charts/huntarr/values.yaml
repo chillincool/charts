@@ -71,21 +71,16 @@ probes: {}
 env: []
 
 # Persistence configuration
-persistence:
-  config:
-    enabled: true
-    type: emptyDir
-    globalMounts:
-      - path: /config
-  # For production, use a PVC:
-  # config:
-  #   enabled: true
-  #   type: pvc
-  #   storageClass: ""
-  #   accessMode: ReadWriteOnce
-  #   size: 1Gi
-  #   globalMounts:
-  #     - path: /config
+# User must configure persistence - no defaults provided
+# Example:
+# persistence:
+#   config:
+#     enabled: true
+#     type: pvc
+#     existingClaim: huntarr-config
+#     globalMounts:
+#       - path: /config
+persistence: {}
 
 nodeSelector: {}
 

@@ -89,19 +89,16 @@ readinessProbe:
 env: []
 
 # Persistence configuration
-persistence:
-  config:
-    enabled: true
-    type: emptyDir
-    globalMounts:
-      - path: /config
-  # For production, use a PVC:
-  # config:
-  #   enabled: true
-  #   type: pvc
-  #   existingClaim: decypharr-config
-  #   globalMounts:
-  #     - path: /config
+# User must configure persistence - no defaults provided
+# Example:
+# persistence:
+#   config:
+#     enabled: true
+#     type: pvc
+#     existingClaim: decypharr-config
+#     globalMounts:
+#       - path: /config
+persistence: {}
 
 nodeSelector: {}
 

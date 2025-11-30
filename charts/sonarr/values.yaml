@@ -50,52 +50,17 @@ ingress:
 #   fsGroup: 1000
 
 # Persistence configuration
-# Supports: pvc, emptyDir, configMap, secret, hostPath, custom
-persistence:
-  config:
-    enabled: true
-    type: emptyDir  # Change to 'pvc' for production
-    # For PVC:
-    # type: pvc
-    # existingClaim: ""  # Use existing PVC
-    # storageClass: ""
-    # size: 1Gi
-    # accessMode: ReadWriteOnce
-    mountPath: /config
-    # subPath: ""
-    # readOnly: false
-
-  tmp:
-    enabled: true
-    type: emptyDir
-    mountPath: /tmp
-    sizeLimit: 1Gi
-
-  # Example: Multiple mounts from same PVC using globalMounts
-  # media:
-  #   enabled: true
-  #   type: pvc
-  #   existingClaim: media-storage
-  #   globalMounts:
-  #     - path: /media/movies
-  #       subPath: movies
-  #     - path: /media/tv
-  #       subPath: tv
-  #       readOnly: false
-
-  # Example: NFS mount
-  # nfs:
-  #   enabled: false
-  #   type: custom
-  #   mountPath: /mnt/nfs
-  #   volumeSpec:
-  #     nfs:
-  #       server: 192.168.1.100
-  #       path: /export/media
-
-# Legacy volume/volumeMount support (optional - use persistence instead)
-volumes: []
-volumeMounts: []
+# User must configure persistence - no defaults provided
+# Example:
+# persistence:
+#   config:
+#     enabled: true
+#     type: pvc
+#     existingClaim: sonarr-config
+#     globalMounts:
+#       - path: /config
+#         subPath: sonarr
+persistence: {}
 
 # Autoscaling - disabled by default
 autoscaling:

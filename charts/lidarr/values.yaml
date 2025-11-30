@@ -29,16 +29,17 @@ ingress:
   tls: []
 
 # Persistence configuration
-persistence:
-  config:
-    enabled: true
-    type: emptyDir
-    mountPath: /config
-  tmp:
-    enabled: true
-    type: emptyDir
-    mountPath: /tmp
-    sizeLimit: 1Gi
+# User must configure persistence - no defaults provided
+# Example:
+# persistence:
+#   config:
+#     enabled: true
+#     type: pvc
+#     existingClaim: lidarr-config
+#     globalMounts:
+#       - path: /config
+#         subPath: lidarr
+persistence: {}
 
 # Autoscaling - disabled by default
 autoscaling:
