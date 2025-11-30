@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -76,6 +76,16 @@ jobs:
             helm push "${CHARTS_DIR}/${chart_name}-${chart_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
             
             echo "Successfully pushed ${chart_name}:${chart_version} to GHCR"
+            
+            # Create and push git tag if it doesn't exist
+            tag_name="${chart_name}-${chart_version}"
+            if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
+              echo "Creating tag: $tag_name"
+              git tag "$tag_name"
+              git push origin "$tag_name"
+            else
+              echo "Tag $tag_name already exists, skipping"
+            fi
           done
           
           # Cleanup temporary directory
