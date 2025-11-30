@@ -47,7 +47,8 @@ Usage: {{ include "common.volumes" . | nindent 8 }}
 {{- range $name, $persistence := .Values.persistence -}}
 {{- if $persistence.enabled }}
 - name: {{ $name }}
-  {{- if eq ($persistence.type | default "pvc") "pvc" }}
+  {{- $type := $persistence.type | default "pvc" }}
+  {{- if or (eq $type "pvc") (eq $type "persistentVolumeClaim") }}
   {{- if $persistence.existingClaim }}
   persistentVolumeClaim:
     claimName: {{ $persistence.existingClaim }}
@@ -55,7 +56,7 @@ Usage: {{ include "common.volumes" . | nindent 8 }}
   persistentVolumeClaim:
     claimName: {{ include "common.fullname" $ }}-{{ $name }}
   {{- end }}
-  {{- else if eq $persistence.type "emptyDir" }}
+  {{- else if eq $type "emptyDir" }}
   emptyDir:
     {{- with $persistence.sizeLimit }}
     sizeLimit: {{ . }}
@@ -63,7 +64,7 @@ Usage: {{ include "common.volumes" . | nindent 8 }}
     {{- with $persistence.medium }}
     medium: {{ . }}
     {{- end }}
-  {{- else if eq $persistence.type "configMap" }}
+  {{- else if eq $type "configMap" }}
   configMap:
     name: {{ $persistence.configMapName | default (include "common.fullname" $) }}
     {{- with $persistence.defaultMode }}
@@ -73,7 +74,7 @@ Usage: {{ include "common.volumes" . | nindent 8 }}
     items:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-  {{- else if eq $persistence.type "secret" }}
+  {{- else if eq $type "secret" }}
   secret:
     secretName: {{ $persistence.secretName | default (include "common.fullname" $) }}
     {{- with $persistence.defaultMode }}
@@ -83,13 +84,13 @@ Usage: {{ include "common.volumes" . | nindent 8 }}
     items:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-  {{- else if eq $persistence.type "hostPath" }}
+  {{- else if eq $type "hostPath" }}
   hostPath:
     path: {{ required "hostPath.path is required" $persistence.hostPath }}
     {{- with $persistence.hostPathType }}
     type: {{ . }}
     {{- end }}
-  {{- else if eq $persistence.type "custom" }}
+  {{- else if eq $type "custom" }}
   {{- toYaml $persistence.volumeSpec | nindent 2 }}
   {{- end }}
 {{- end }}
@@ -106,7 +107,8 @@ Usage: {{ include "common.pvcs" . }}
 */}}
 {{- define "common.pvcs" -}}
 {{- range $name, $persistence := .Values.persistence -}}
-{{- if and $persistence.enabled (eq ($persistence.type | default "pvc") "pvc") (not $persistence.existingClaim) }}
+{{- $type := $persistence.type | default "pvc" }}
+{{- if and $persistence.enabled (or (eq $type "pvc") (eq $type "persistentVolumeClaim")) (not $persistence.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
