@@ -1,3 +1,86 @@
 # Default values for common library chart
 # This is a library chart - values here serve as documentation
 # for expected values in dependent charts
+
+# Standard user/group ID used across containers (matches linuxserver.io convention)
+# uid: 568
+# gid: 568
+
+# Timezone for containers
+timezone: "UTC"
+
+# Probe configuration
+probes:
+  # Health check path - most *arr apps use /ping
+  path: "/ping"
+  # Set to false to disable probes entirely
+  enabled: true
+
+# Default values that child charts should define:
+#
+# image:
+#   registry: ghcr.io
+#   repository: org/app
+#   tag: latest
+#   pullPolicy: IfNotPresent
+#
+# containerPort: 8080
+#
+# service:
+#   type: ClusterIP
+#   port: 80
+#   targetPort: http
+#
+# resources: {}
+#   # Omit to use common.defaultResources
+#   # Or specify your own:
+#   # requests:
+#   #   cpu: 100m
+#   #   memory: 256Mi
+#   # limits:
+#   #   cpu: 1
+#   #   memory: 1Gi
+#
+# securityContext: {}
+#   # Omit to use common.defaultSecurityContext
+#   # Or specify your own overrides
+#
+# podSecurityContext: {}
+#   # Omit to use common.defaultPodSecurityContext
+#   # Or specify your own overrides
+#
+# persistence:
+#   config:
+#     enabled: true
+#     type: pvc  # or emptyDir
+#     existingClaim: ""
+#     storageClass: ""
+#     size: 1Gi
+#     accessMode: ReadWriteOnce
+#   media:
+#     enabled: false
+#     existingClaim: ""
+#   downloads:
+#     enabled: false
+#     existingClaim: ""
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Autoscaling configuration
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []

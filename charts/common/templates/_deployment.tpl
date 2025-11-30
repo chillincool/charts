@@ -29,45 +29,35 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- include "common.podSecurityContext" . | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-          {{- with .Values.securityContext }}
           securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- include "common.securityContext" . | nindent 12 }}
           image: {{ include "common.image" . }}
           imagePullPolicy: {{ include "common.imagePullPolicy" . }}
           ports:
             - name: http
               containerPort: {{ .Values.containerPort | default 80 }}
               protocol: TCP
-          {{- if .Values.livenessProbe }}
           livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-          {{- end }}
-          {{- if .Values.readinessProbe }}
+            {{- include "common.livenessProbe" . | nindent 12 }}
           readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
-          {{- end }}
-          {{- with .Values.resources }}
+            {{- include "common.readinessProbe" . | nindent 12 }}
           resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- include "common.resources" . | nindent 12 }}
           {{- with .Values.env }}
           env:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
+          {{- if or .Values.persistence .Values.volumeMounts }}
           volumeMounts:
-            {{- toYaml . | nindent 12 }}
+            {{- include "common.volumeMounts" . | nindent 12 }}
           {{- end }}
-      {{- with .Values.volumes }}
+      {{- if or .Values.persistence .Values.volumes }}
       volumes:
-        {{- toYaml . | nindent 8 }}
+        {{- include "common.volumes" . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

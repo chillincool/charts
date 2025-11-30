@@ -1,34 +1,14 @@
 # Default values for prowlarr
-replicaCount: 1
+# Most defaults come from the common library chart
+# Only override what's specific to this app
 
 image:
   registry: ghcr.io
   repository: chillincool/prowlarr
-  # tag defaults to appVersion from Chart.yaml if not specified
-  # For production, use a specific SHA or version tag, e.g., "sha-abc123"
   tag: latest
   pullPolicy: IfNotPresent
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-
-podSecurityContext:
-  fsGroup: 65534
-
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 65534
-  runAsGroup: 65534
-  readOnlyRootFilesystem: false
-
+# Prowlarr listens on port 9696
 containerPort: 9696
 
 service:
@@ -36,76 +16,44 @@ service:
   port: 9696
   targetPort: http
 
+# Ingress - disabled by default
 ingress:
   enabled: false
   className: ""
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
   hosts:
     - host: prowlarr.local
       paths:
         - path: /
           pathType: Prefix
   tls: []
-  #  - secretName: prowlarr-tls
-  #    hosts:
-  #      - prowlarr.local
 
-resources: {}
-  # limits:
-  #   cpu: 1000m
-  #   memory: 1Gi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
+# Persistence configuration
+persistence:
+  config:
+    enabled: true
+    type: emptyDir
+    mountPath: /config
+  tmp:
+    enabled: true
+    type: emptyDir
+    mountPath: /tmp
+    sizeLimit: 1Gi
 
+# Autoscaling - disabled by default
 autoscaling:
   enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
 
-livenessProbe:
-  httpGet:
-    path: /ping
-    port: http
-  initialDelaySeconds: 45
-  periodSeconds: 30
-  timeoutSeconds: 10
-  failureThreshold: 3
+# Service account
+serviceAccount:
+  create: true
 
-readinessProbe:
-  httpGet:
-    path: /ping
-    port: http
-  initialDelaySeconds: 15
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-# Environment variables
-env: []
-
-# Volumes for persistent storage
-volumes:
-  - name: config
-    emptyDir: {}
-  # For production, use a persistent volume claim:
-  # - name: config
-  #   persistentVolumeClaim:
-  #     claimName: prowlarr-config
-  # - name: media
-  #   persistentVolumeClaim:
-  #     claimName: media
-
-volumeMounts:
-  - name: config
-    mountPath: /config
-
+# Additional settings
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: []
+podAnnotations: {}
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}
+env: []
