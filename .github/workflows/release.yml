@@ -94,7 +94,53 @@ jobs:
           
           CHARTS_DIR=$(mktemp -d)
           
+          # Process common chart first if it's in the list
+          if echo "$changed_charts" | grep -q "common"; then
+            echo "Processing common chart first..."
+            chart="charts/common"
+            current_version=$(yq eval '.version' "$chart/Chart.yaml")
+            echo "Common current version: $current_version"
+            
+            IFS='.' read -r major minor patch <<< "$current_version"
+            new_patch=$((patch + 1))
+            new_version="${major}.${minor}.${new_patch}"
+            echo "Common new version: $new_version"
+            
+            yq eval ".version = \"$new_version\"" -i "$chart/Chart.yaml"
+            
+            helm package "$chart" -d "$CHARTS_DIR"
+            helm push "${CHARTS_DIR}/common-${new_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
+            echo "Successfully pushed common:${new_version} to GHCR"
+            
+            tag_name="common-${new_version}"
+            git tag "$tag_name"
+            git push origin "$tag_name"
+            echo "Created tag: $tag_name"
+            
+            # Update all app charts to use new common version
+            for app_chart in charts/*/Chart.yaml; do
+              if [[ "$app_chart" == "charts/common/Chart.yaml" ]]; then
+                continue
+              fi
+              
+              # Update common dependency version if it exists
+              if yq eval '.dependencies[] | select(.name == "common")' "$app_chart" > /dev/null 2>&1; then
+                echo "Updating common dependency in $app_chart to $new_version"
+                yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$new_version\"" -i "$app_chart"
+              fi
+            done
+            
+            # Remove common from the list so we don't process it again
+            changed_charts=$(echo "$changed_charts" | sed 's/common//')
+          fi
+          
+          # Now process all other charts
           for chart_name in $changed_charts; do
+            # Skip empty strings
+            if [[ -z "$chart_name" ]]; then
+              continue
+            fi
+            
             chart="charts/$chart_name"
             
             if [[ ! -f "$chart/Chart.yaml" ]]; then
