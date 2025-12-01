@@ -3,6 +3,7 @@ name: decypharr
 description: A Helm chart for decypharr
 type: application
 version: 0.2.0
+# Updated: 2025-11-30
 appVersion: "latest"
 keywords:
   - decypharr

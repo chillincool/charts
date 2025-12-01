@@ -3,6 +3,7 @@ name: huntarr
 description: A Helm chart for Huntarr
 type: application
 version: 0.1.0
+# Updated: 2025-11-30
 appVersion: "latest"
 keywords:
   - huntarr
