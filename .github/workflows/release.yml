@@ -113,9 +113,13 @@ jobs:
             echo "Successfully pushed common:${new_version} to GHCR"
             
             tag_name="common-${new_version}"
-            git tag "$tag_name"
-            git push origin "$tag_name"
-            echo "Created tag: $tag_name"
+            if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
+              git tag "$tag_name"
+              git push origin "$tag_name"
+              echo "Created tag: $tag_name"
+            else
+              echo "Tag $tag_name already exists, skipping"
+            fi
             
             # Update all app charts to use new common version
             for app_chart in charts/*/Chart.yaml; do
@@ -179,9 +183,13 @@ jobs:
             
             # Create and push git tag
             tag_name="${chart_name}-${new_version}"
-            git tag "$tag_name"
-            git push origin "$tag_name"
-            echo "Created tag: $tag_name"
+            if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
+              git tag "$tag_name"
+              git push origin "$tag_name"
+              echo "Created tag: $tag_name"
+            else
+              echo "Tag $tag_name already exists, skipping"
+            fi
           done
           
           # Commit version bumps back to repo
