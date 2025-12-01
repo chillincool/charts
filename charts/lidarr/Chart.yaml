@@ -3,7 +3,7 @@ name: lidarr
 description: A Helm chart for Lidarr - A music collection manager for Usenet and BitTorrent users
 type: application
 version: 0.2.0
-# Updated: 2025-11-30
+# Updated: 2025-11-30 v2
 appVersion: "latest"
 keywords:
   - lidarr
