@@ -2,7 +2,7 @@ apiVersion: v2
 name: sonarr
 description: A Helm chart for Sonarr
 type: application
-version: 0.2.0
+version: 0.2.1
 # Updated: 2025-11-30 v3
 appVersion: "latest"
 keywords:
@@ -18,5 +18,5 @@ maintainers:
   - name: chillincool
 dependencies:
   - name: common
-    version: 1.1.0
+    version: 1.1.1
     repository: file://../common
