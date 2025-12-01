@@ -194,10 +194,6 @@ jobs:
           fi
           
           rm -rf "$CHARTS_DIR"
-          done
-          
-          # Cleanup temporary directory
-          rm -rf "$CHARTS_DIR"
 
       - name: Logout from GitHub Container Registry
         if: always()
