@@ -11,6 +11,10 @@ image:
 # Tautulli listens on port 8181
 containerPort: 8181
 
+# Tautulli uses /status for health checks instead of /ping
+probes:
+  path: /status
+
 service:
   type: ClusterIP
   port: 8181
