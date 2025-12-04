@@ -2,7 +2,7 @@ apiVersion: v2
 name: prowlarr
 description: A Helm chart for Prowlarr - An indexer manager/proxy for Usenet and BitTorrent
 type: application
-version: 0.2.1
+version: 0.2.2
 # Updated: 2025-11-30 v3
 appVersion: "latest"
 keywords:
@@ -18,5 +18,5 @@ maintainers:
   - name: chillincool
 dependencies:
   - name: common
-    version: 1.1.1
+    version: 1.1.2
     repository: file://../common
