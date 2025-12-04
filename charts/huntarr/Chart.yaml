@@ -2,7 +2,7 @@ apiVersion: v2
 name: huntarr
 description: A Helm chart for Huntarr
 type: application
-version: 0.1.1
+version: 0.1.2
 # Updated: 2025-11-30 v3
 appVersion: "latest"
 keywords:
@@ -16,5 +16,5 @@ maintainers:
   - name: chillincool
 dependencies:
   - name: common
-    version: 1.1.1
+    version: 1.1.2
     repository: file://../common
