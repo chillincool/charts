@@ -62,8 +62,11 @@ jobs:
       - name: Detect Changed Charts
         id: changed
         run: |
-          # Get list of changed files
-          changed_files=$(git diff --name-only HEAD~1 HEAD || echo "")
+          # Get list of changed files (skip if commit message contains [skip ci])
+          changed_files=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+          
+          echo "Changed files:"
+          echo "$changed_files"
           
           # Find unique chart directories that changed
           changed_charts=""
@@ -71,25 +74,31 @@ jobs:
             if [[ $file == charts/* ]]; then
               chart_dir=$(echo "$file" | cut -d'/' -f2)
               if [[ -f "charts/$chart_dir/Chart.yaml" ]]; then
-                changed_charts="$changed_charts $chart_dir"
+                # Don't add duplicates
+                if ! echo "$changed_charts" | grep -qw "$chart_dir"; then
+                  changed_charts="$changed_charts $chart_dir"
+                fi
               fi
             fi
           done
           
-          # Remove duplicates
-          changed_charts=$(echo "$changed_charts" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+          # Trim whitespace
+          changed_charts=$(echo "$changed_charts" | xargs)
           
           echo "changed=$changed_charts" >> $GITHUB_OUTPUT
-          echo "Changed charts: $changed_charts"
+          echo "Changed charts: '$changed_charts'"
 
       - name: Bump Versions and Package Charts
         run: |
           changed_charts="${{ steps.changed.outputs.changed }}"
           
-          # If no changed charts detected, process all charts (first run or workflow_dispatch)
+          # Trim whitespace
+          changed_charts=$(echo "$changed_charts" | xargs)
+          
+          # If no changed charts detected, exit early (don't process all)
           if [[ -z "$changed_charts" ]]; then
-            echo "No changes detected or manual trigger - processing all charts"
-            changed_charts=$(find charts -maxdepth 1 -mindepth 1 -type d -exec basename {} \;)
+            echo "No chart changes detected - nothing to publish"
+            exit 0
           fi
           
           CHARTS_DIR=$(mktemp -d)
