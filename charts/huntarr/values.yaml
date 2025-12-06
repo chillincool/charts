@@ -5,7 +5,7 @@ image:
   registry: ghcr.io
   repository: chillincool/huntarr
   # tag defaults to appVersion from Chart.yaml if not specified
-  tag: latest
+  tag: 8.2.10
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

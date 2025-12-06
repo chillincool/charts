@@ -1,0 +1,85 @@
+# Default values for kometa
+# Most defaults come from the common library chart
+# Only override what's specific to this app
+
+image:
+  registry: ghcr.io
+  repository: chillincool/kometa
+  tag: v2.2.2
+  pullPolicy: IfNotPresent
+
+# CronJob schedule - runs weekly on Monday at 3am
+schedule: "0 3 * * 1"
+
+# CronJob settings
+concurrencyPolicy: Forbid
+successfulJobsHistoryLimit: 3
+failedJobsHistoryLimit: 3
+restartPolicy: OnFailure
+backoffLimit: 3
+
+# Resources - metadata processing can be memory intensive
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 2
+    memory: 2Gi
+
+# Security contexts - omit to use common defaults (uid/gid 568)
+# Uncomment to override:
+# securityContext:
+#   runAsUser: 1000
+# podSecurityContext:
+#   fsGroup: 1000
+
+# ConfigMap for YAML config files
+# Define your config.yml content here and it will be mounted to /config
+# Example:
+# configMap:
+#   config.yml: |
+#     plex:
+#       url: http://plex:32400
+#       token: YOUR_TOKEN
+#     libraries:
+#       Movies:
+#         metadata_path:
+#           - config/movies.yml
+configMap: {}
+
+# Persistence configuration  
+# ConfigMap handles /config, use persistence for assets and cache
+# Example:
+# persistence:
+#   config:
+#     enabled: true
+#     type: configMap
+#     name: kometa-config  # Auto-created from configMap above
+#     globalMounts:
+#       - path: /config
+#   assets:
+#     enabled: true
+#     type: pvc
+#     existingClaim: kometa-assets
+#     globalMounts:
+#       - path: /assets
+persistence: {}
+
+# Environment variables for Kometa configuration
+env: []
+#   - name: PLEX_URL
+#     value: "http://plex:32400"
+#   - name: PLEX_TOKEN
+#     valueFrom:
+#       secretKeyRef:
+#         name: kometa-secrets
+#         key: plex-token
+#   - name: RUN_HOUR
+#     value: "3"
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""

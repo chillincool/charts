@@ -1,24 +1,24 @@
-# Default values for sonarr
+# Default values for overseerr
 # Most defaults come from the common library chart
 # Only override what's specific to this app
 
 image:
   registry: ghcr.io
-  repository: chillincool/sonarr
-  tag: 4.0.16.2944
+  repository: chillincool/overseerr
+  tag: 1.33.2
   pullPolicy: IfNotPresent
 
-# Sonarr listens on port 8989
-containerPort: 8989
+# Overseerr listens on port 5055
+containerPort: 5055
 
 service:
   type: ClusterIP
-  port: 8989
+  port: 5055
   targetPort: http
 
-# Override probe path if different from /ping (sonarr uses /ping)
-# probes:
-#   path: /ping
+# Overseerr uses /api/v1/status for health checks
+probes:
+  path: /api/v1/status
 
 # Ingress - disabled by default
 ingress:
@@ -26,21 +26,21 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: sonarr.local
+    - host: overseerr.local
       paths:
         - path: /
           pathType: Prefix
   tls: []
 
-# Resources - omit to use common.defaultResources
+# Resources - use streaming defaults from common
 # Uncomment to override:
 # resources:
 #   requests:
 #     cpu: 100m
 #     memory: 256Mi
 #   limits:
-#     cpu: 1
-#     memory: 1Gi
+#     cpu: 2
+#     memory: 2Gi
 
 # Security contexts - omit to use common defaults (uid/gid 568)
 # Uncomment to override:
@@ -56,10 +56,9 @@ ingress:
 #   config:
 #     enabled: true
 #     type: pvc
-#     existingClaim: sonarr-config
+#     existingClaim: overseerr-config
 #     globalMounts:
-#       - path: /config
-#         subPath: sonarr
+#       - path: /app/config
 persistence: {}
 
 # Autoscaling - disabled by default
@@ -69,13 +68,5 @@ autoscaling:
 # Service account
 serviceAccount:
   create: true
-
-# Additional settings
-nameOverride: ""
-fullnameOverride: ""
-imagePullSecrets: []
-podAnnotations: {}
-nodeSelector: {}
-tolerations: []
-affinity: {}
-env: []
+  annotations: {}
+  name: ""
