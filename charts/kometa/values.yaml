@@ -48,7 +48,7 @@ resources:
 #           - config/movies.yml
 configMap: {}
 
-# Persistence configuration  
+# Persistence configuration
 # ConfigMap handles /config, use persistence for assets and cache
 # Example:
 # persistence:
