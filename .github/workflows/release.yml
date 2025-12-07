@@ -236,7 +236,8 @@ jobs:
           if [[ -n "$HEAD_REF" ]]; then
             if [[ "$HEAD_REF" == auto-bump/* ]] || [[ "$HEAD_REF" == auto-update-dependents/* ]]; then
               echo "Deleting remote branch: $HEAD_REF"
-              gh api "repos/${{ github.repository }}/git/refs/heads/$HEAD_REF" -X DELETE || echo "Branch deletion failed or branch already deleted"
+              encoded_head_ref=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$HEAD_REF")
+              gh api "repos/${{ github.repository }}/git/refs/heads/$encoded_head_ref" -X DELETE || echo "Branch deletion failed or branch already deleted"
             else
               echo "Skipping remote branch delete; head ref '$HEAD_REF' does not match auto-bump/auto-update pattern"
             fi
