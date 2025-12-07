@@ -46,6 +46,19 @@ probes:
 #   # Or specify your own overrides
 #
 # podSecurityContext: {}
+# Environment variables / environment references
+#
+# Child charts may provide either explicit env entries or envFrom entries
+# which reference ConfigMaps or Secrets. Examples:
+# env:
+#   - name: EXAMPLE_FLAG
+#     value: "true"
+#
+# envFrom:
+#   - configMapRef:
+#       name: my-app-config
+#   - secretRef:
+#       name: my-app-secret
 #   # Omit to use common.defaultPodSecurityContext
 #   # Or specify your own overrides
 #

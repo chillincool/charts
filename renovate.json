@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": [
+        "^charts/.+/values\\.yaml$"
+      ],
+      "matchStrings": [
+        "registry:\\s*(?<registryUrl>[^\\s]+)\\s+repository:\\s*(?<depName>[^\\s]+)\\s+tag:\\s*[\"']?(?<currentValue>[^\\s\"']+)[\"']?"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "docker": {
+    "pinDigests": false
+  },
+  "helm-values": {
+    "fileMatch": ["^charts/.+/Chart\\.yaml$"]
+  },
+  "packageRules": [
+    {
+      "description": "Track version tags for container images",
+      "matchDatasources": ["docker"],
+      "matchPackagePrefixes": ["chillincool/"],
+      "versioning": "semver",
+      "groupName": "container images",
+      "schedule": ["every 6 hours"],
+      "automerge": false,
+      "commitMessageTopic": "{{depName}}",
+      "separateMinorPatch": false
+    },
+    {
+      "description": "Separate critical security updates",
+      "matchUpdateTypes": ["major"],
+      "groupName": "major container updates",
+      "schedule": ["at any time"],
+      "automerge": false
+    }
+  ],
+  "prConcurrentLimit": 5,
+  "prCreation": "immediate",
+  "labels": ["dependencies", "renovate"],
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "update",
+  "commitMessageExtra": "to {{newValue}}",
+  "semanticCommits": "enabled"
+}
