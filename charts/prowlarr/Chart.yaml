@@ -4,7 +4,7 @@ description: A Helm chart for Prowlarr - An indexer manager/proxy for Usenet and
 type: application
 version: 0.2.6
 # Updated: 2025-11-30 v3
-appVersion: "19b2ecc2f0fc13eb96734a1d3dca3553d7dc4abe"
+appVersion: "2.3.0.5236"
 keywords:
   - prowlarr
   - media
