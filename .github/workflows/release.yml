@@ -230,8 +230,10 @@ jobs:
           
           rm -rf "$CHARTS_DIR"
 
-          # If this publish was triggered by an auto-bump or auto-update-dependents branch,
-          # delete the source branch from the remote to keep the repo clean.
+      - name: Delete merged branch
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
           echo "PR head branch: $HEAD_REF"
           if [[ -n "$HEAD_REF" ]]; then
             if [[ "$HEAD_REF" == auto-bump/* ]] || [[ "$HEAD_REF" == auto-update-dependents/* ]]; then
@@ -284,7 +286,6 @@ jobs:
       - name: Package and publish charts from merged PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           PR_NUMBER=${{ github.event.pull_request.number }}
           echo "PR_NUMBER=$PR_NUMBER"
