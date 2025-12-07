@@ -1,19 +1,19 @@
-# Default values for radarr
+# Default values for suggestarr
 # Most defaults come from the common library chart
 # Only override what's specific to this app
 
 image:
   registry: ghcr.io
-  repository: chillincool/radarr
-  tag: 5.18.4.9479
+  repository: chillincool/suggestarr
+  tag: v1.0.20
   pullPolicy: IfNotPresent
 
-# Radarr listens on port 7878
-containerPort: 7878
+# Suggestarr listens on port 5000
+containerPort: 5000
 
 service:
   type: ClusterIP
-  port: 7878
+  port: 5000
   targetPort: http
 
 # Ingress - disabled by default
@@ -22,11 +22,28 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: radarr.local
+    - host: suggestarr.local
       paths:
         - path: /
           pathType: Prefix
   tls: []
+
+# Resources - omit to use common.defaultResources
+# Uncomment to override:
+# resources:
+#   requests:
+#     cpu: 100m
+#     memory: 256Mi
+#   limits:
+#     cpu: 1
+#     memory: 1Gi
+
+# Security contexts - omit to use common defaults (uid/gid 568)
+# Uncomment to override:
+# securityContext:
+#   runAsUser: 1000
+# podSecurityContext:
+#   fsGroup: 1000
 
 # Persistence configuration
 # User must configure persistence - no defaults provided
@@ -35,10 +52,9 @@ ingress:
 #   config:
 #     enabled: true
 #     type: pvc
-#     existingClaim: radarr-config
+#     existingClaim: suggestarr-config
 #     globalMounts:
 #       - path: /config
-#         subPath: radarr
 persistence: {}
 
 # Autoscaling - disabled by default
@@ -48,14 +64,5 @@ autoscaling:
 # Service account
 serviceAccount:
   create: true
-
-# Additional settings
-nameOverride: ""
-fullnameOverride: ""
-imagePullSecrets: []
-podAnnotations: {}
-nodeSelector: {}
-tolerations: []
-affinity: {}
-env: []
-envFrom: []
+  annotations: {}
+  name: ""
