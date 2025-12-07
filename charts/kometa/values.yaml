@@ -48,6 +48,9 @@ resources:
 #           - config/movies.yml
 configMap: {}
 
+# Test flag used by CI to trigger harmless changes for workflow testing
+ciTest: true
+
 # Persistence configuration
 # ConfigMap handles /config, use persistence for assets and cache
 # Example:

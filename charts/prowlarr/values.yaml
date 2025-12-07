@@ -2,6 +2,9 @@
 # Most defaults come from the common library chart
 # Only override what's specific to this app
 
+# Test flag used by CI to trigger harmless changes for workflow testing
+ciTest: true
+
 image:
   registry: ghcr.io
   repository: chillincool/prowlarr

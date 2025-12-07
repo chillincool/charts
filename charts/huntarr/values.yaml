@@ -88,3 +88,6 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# Test flag used by CI to trigger harmless changes for workflow testing
+ciTest: true

@@ -67,6 +67,15 @@ jobs:
       - name: Detect Changed Charts
         id: changed
         run: |
+          # Prevent loops — skip if last commit authored by bot or looks like an auto-bump/dependency update
+          last_author=$(git log -1 --pretty=format:'%an' || echo "")
+          last_msg=$(git log -1 --pretty=format:'%s' || echo "")
+          if [[ "$last_author" == "github-actions[bot]" ]] || [[ "$last_msg" == *"auto-bump"* ]] || [[ "$last_msg" == *"chore(deps): update dependent charts"* ]]; then
+            echo "Skipping: last commit authored by bot or auto-bump/dependency-update message - $last_author: $last_msg"
+            echo "changed=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # Get list of changed files (skip if commit message contains [skip ci])
           changed_files=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
           
@@ -252,6 +261,8 @@ jobs:
           echo "Files in PR:\n$files"
 
           CHARTS_DIR=$(mktemp -d)
+          common_published=false
+          common_version=""
           for f in $files; do
             if [[ $f == charts/*/Chart.yaml ]]; then
               chart_dir=$(echo "$f" | cut -d'/' -f2)
@@ -269,12 +280,17 @@ jobs:
               else
                 echo "Tag $tag_name already exists, skipping"
               fi
+              # remember if common was published
+              if [[ "$chart_dir" == "common" ]]; then
+                common_published=true
+                common_version="$current_version"
+              fi
             fi
           done
 
           # If we published common, create a grouped PR updating dependent charts
-          if [[ "$chart_dir" == "common" ]] && [[ -n "$current_version" ]]; then
-            DEP_BRANCH="auto-update-dependents/common-${current_version}-$(date -u +%Y%m%d%H%M)"
+          if [[ "$common_published" == true ]] && [[ -n "$common_version" ]]; then
+            DEP_BRANCH="auto-update-dependents/common-${common_version}-$(date -u +%Y%m%d%H%M)"
             echo "Preparing dependent update branch: $DEP_BRANCH"
             git checkout -b "$DEP_BRANCH"
             git config user.name "github-actions[bot]"
