@@ -302,17 +302,28 @@ jobs:
       - name: Package and publish charts from merged PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: |
-          PR_NUMBER=${{ github.event.pull_request.number }}
-          echo "PR_NUMBER=$PR_NUMBER"
-
-          # Get files changed in PR
-          files=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/files" | jq -r '.[].filename')
-          echo "Files in PR:\n$files"
-
-          CHARTS_DIR=$(mktemp -d)
-          common_published=false
+          echo "PR head branch: $HEAD_REF"
+          if [[ "$HEAD_REF" == auto-bump/* ]] || [[ "$HEAD_REF" == auto-update-dependents/* ]]; then
+            echo "Deleting remote branch: $HEAD_REF"
+            # URL-encode branch name so slashes are safe in the REST path
+            encoded_ref=$(jq -nr --arg v "$HEAD_REF" '$v|@uri')
+            echo "Encoded ref: $encoded_ref"
+            delete_url="https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$encoded_ref"
+            echo "DELETE $delete_url"
+            resp=$(curl -sS -X DELETE -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$delete_url" -w "HTTPSTATUS:%{http_code}" 2>&1) || true
+            http_status=$(echo "$resp" | sed -e 's/.*HTTPSTATUS://')
+            body=$(echo "$resp" | sed -e 's/HTTPSTATUS:.*//')
+            echo "Delete response status: $http_status"
+            if [[ "$http_status" == "204" ]]; then
+              echo "Branch deleted successfully: $HEAD_REF"
+            elif [[ "$http_status" == "404" ]]; then
+              echo "Branch not found (already deleted or never existed): $HEAD_REF"
+            else
+              echo "Branch delete failed (status $http_status): $body"
+            fi
+          else
+            echo "Skipping remote branch delete; head ref '$HEAD_REF' does not match auto-bump/auto-update pattern"
+          fi
           common_version=""
           for f in $files; do
             if [[ $f == charts/*/Chart.yaml ]]; then
