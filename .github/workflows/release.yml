@@ -125,6 +125,7 @@ jobs:
           CHARTS_DIR=$(mktemp -d)
           
           # Process common chart first if it's in the list
+          common_new_version=""
           if echo "$changed_charts" | grep -q "common"; then
             echo "Processing common chart first..."
             chart="charts/common"
@@ -134,6 +135,7 @@ jobs:
             IFS='.' read -r major minor patch <<< "$current_version"
             new_patch=$((patch + 1))
             new_version="${major}.${minor}.${new_patch}"
+            common_new_version="$new_version"
             echo "Common new version: $new_version"
             
             yq eval ".version = \"$new_version\"" -i "$chart/Chart.yaml"
@@ -186,6 +188,13 @@ jobs:
             
             # Update Chart.yaml with new version
             yq eval ".version = \"$new_version\"" -i "$chart/Chart.yaml"
+            
+            # Update common dependency if common was bumped
+            if [[ -n "$common_new_version" ]]; then
+              if yq eval '.dependencies[] | select(.name == "common")' "$chart/Chart.yaml" > /dev/null 2>&1; then
+                yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$common_new_version\"" -i "$chart/Chart.yaml"
+              fi
+            fi
             
             # Update dependencies
             helm dependency update "$chart"
