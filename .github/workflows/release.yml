@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'charts/**'
-      - '.github/workflows/release.yml'
+      - charts/**
+      - .github/workflows/release.yml
   pull_request:
     types: [closed]
   workflow_dispatch:
@@ -151,19 +151,7 @@ jobs:
               echo "Tag $tag_name already exists, skipping"
             fi
             
-            # Update all app charts to use new common version
-            for app_chart in charts/*/Chart.yaml; do
-              if [[ "$app_chart" == "charts/common/Chart.yaml" ]]; then
-                continue
-              fi
-              
-              # Update common dependency version if it exists
-              if yq eval '.dependencies[] | select(.name == "common")' "$app_chart" > /dev/null 2>&1; then
-                echo "Updating common dependency in $app_chart to $new_version"
-                yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$new_version\"" -i "$app_chart"
-              fi
-            done
-            
+            # We no longer update app charts inline here — dependent updates are handled by publish-on-merge
             # Remove common from the list so we don't process it again
             changed_charts=$(echo "$changed_charts" | sed 's/common//')
           fi
@@ -242,18 +230,25 @@ jobs:
           
           rm -rf "$CHARTS_DIR"
 
-          # If packaging/publish succeeded, delete the source branch that triggered the PR
-          # only for auto-bump or auto-update branches created by this workflow
+          # If this publish was triggered by an auto-bump or auto-update-dependents branch,
+          # delete the source branch from the remote to keep the repo clean.
           echo "PR head branch: $HEAD_REF"
-          if [[ "$HEAD_REF" == auto-bump/* ]] || [[ "$HEAD_REF" == auto-update-dependents/* ]]; then
-            echo "Deleting remote branch: $HEAD_REF"
-            resp=$(curl -sS -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$HEAD_REF" 2>&1) || true
-            echo "Delete response: $resp"
+          if [[ -n "$HEAD_REF" ]]; then
+            if [[ "$HEAD_REF" == auto-bump/* ]] || [[ "$HEAD_REF" == auto-update-dependents/* ]]; then
+              echo "Deleting remote branch: $HEAD_REF"
+              # URL-encode the branch name for the API
+              encoded_head_ref=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$HEAD_REF")
+              resp=$(curl -sS -X DELETE -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$encoded_head_ref" 2>&1) || true
+              echo "Delete response: $resp"
+            else
+              echo "Skipping remote branch delete; head ref '$HEAD_REF' does not match auto-bump/auto-update pattern"
+            fi
           else
-            echo "Skipping remote branch delete; head ref '$HEAD_REF' does not match auto-bump/auto-update pattern"
+            echo "No HEAD_REF found for this PR"
           fi
+
+          # End of bump job — no branch deletion here (deletion happens after successful publish-on-merge)
 
       - name: Logout from GitHub Container Registry
         if: always()
@@ -282,7 +277,6 @@ jobs:
       - name: Authenticate to GHCR for publishing
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
           GITHUB_ACTOR: ${{ github.actor }}
         run: |
           set -e
@@ -290,40 +284,24 @@ jobs:
           if echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin >/dev/null 2>&1; then
             echo "Authenticated with GITHUB_TOKEN"
           else
-            echo "GITHUB_TOKEN login failed; attempting with GHCR_PAT if present"
-            if [[ -n "$GHCR_PAT" ]]; then
-              echo "$GHCR_PAT" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-              echo "Authenticated with GHCR_PAT"
-            else
-              echo "No GHCR_PAT secret found; continuing and will surface errors on push"
-            fi
+            echo "GITHUB_TOKEN login failed; no GHCR_PAT fallback configured — continuing and will surface errors on push"
+          fi
           fi
 
       - name: Package and publish charts from merged PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          echo "PR head branch: $HEAD_REF"
-          if [[ "$HEAD_REF" == auto-bump/* ]] || [[ "$HEAD_REF" == auto-update-dependents/* ]]; then
-            echo "Deleting remote branch: $HEAD_REF"
-            # URL-encode branch name so slashes are safe in the REST path
-            encoded_ref=$(jq -nr --arg v "$HEAD_REF" '$v|@uri')
-            echo "Encoded ref: $encoded_ref"
-            delete_url="https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$encoded_ref"
-            echo "DELETE $delete_url"
-            resp=$(curl -sS -X DELETE -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$delete_url" -w "HTTPSTATUS:%{http_code}" 2>&1) || true
-            http_status=$(echo "$resp" | sed -e 's/.*HTTPSTATUS://')
-            body=$(echo "$resp" | sed -e 's/HTTPSTATUS:.*//')
-            echo "Delete response status: $http_status"
-            if [[ "$http_status" == "204" ]]; then
-              echo "Branch deleted successfully: $HEAD_REF"
-            elif [[ "$http_status" == "404" ]]; then
-              echo "Branch not found (already deleted or never existed): $HEAD_REF"
-            else
-              echo "Branch delete failed (status $http_status): $body"
-            fi
-          else
-            echo "Skipping remote branch delete; head ref '$HEAD_REF' does not match auto-bump/auto-update pattern"
-          fi
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          echo "PR_NUMBER=$PR_NUMBER"
+
+          # Get files changed in PR
+          files=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/files" | jq -r '.[].filename')
+          echo "Files in PR:\n$files"
+
+          CHARTS_DIR=$(mktemp -d)
+          common_published=false
           common_version=""
           for f in $files; do
             if [[ $f == charts/*/Chart.yaml ]]; then
@@ -376,9 +354,9 @@ jobs:
               fi
               if yq eval '.dependencies[] | select(.name == "common")' "$app_chart" > /dev/null 2>&1; then
                 dep_ver=$(yq eval '.dependencies[] | select(.name == "common") | .version' "$app_chart")
-                if [[ "$dep_ver" != "$current_version" ]]; then
-                  echo "Updating $app_chart common dependency: $dep_ver -> $current_version"
-                  yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$current_version\"" -i "$app_chart"
+                if [[ "$dep_ver" != "$common_version" ]]; then
+                  echo "Updating $app_chart common dependency: $dep_ver -> $common_version"
+                  yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$common_version\"" -i "$app_chart"
                   git add "$app_chart"
                   changed_any=true
                 fi
