@@ -233,6 +233,7 @@ jobs:
       - name: Delete merged branch
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "PR head branch: $HEAD_REF"
           if [[ -n "$HEAD_REF" ]]; then
