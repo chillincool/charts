@@ -51,6 +51,11 @@ spec:
             {{- include "common.readinessProbe" . | nindent 12 }}
           resources:
             {{- include "common.resources" . | nindent 12 }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
           {{- with .Values.env }}
           env:
             {{- toYaml . | nindent 12 }}
