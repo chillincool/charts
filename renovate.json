@@ -23,15 +23,16 @@
   },
   "packageRules": [
     {
-      "description": "Track version tags for container images",
+      "description": "Track version tags for container images (grouped & scheduled)",
       "matchDatasources": ["docker"],
       "matchPackagePrefixes": ["chillincool/"],
       "versioning": "semver",
       "groupName": "container images",
-      "schedule": ["every 6 hours"],
+      "schedule": ["before 06:00 every day"],
       "automerge": false,
       "commitMessageTopic": "{{depName}}",
-      "separateMinorPatch": false
+      "separateMinorPatch": false,
+      "prConcurrentLimit": 2
     },
     {
       "description": "Separate critical security updates",
@@ -41,8 +42,8 @@
       "automerge": false
     }
   ],
-  "prConcurrentLimit": 5,
-  "prCreation": "immediate",
+  "prConcurrentLimit": 2,
+  "prCreation": "not-pending",
   "labels": ["dependencies", "renovate"],
   "commitMessagePrefix": "chore(deps):",
   "commitMessageAction": "update",

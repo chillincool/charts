@@ -7,6 +7,8 @@ on:
     paths:
       - 'charts/**'
       - '.github/workflows/release.yml'
+  pull_request:
+    types: [closed]
   workflow_dispatch:
 
 permissions:
@@ -185,33 +187,32 @@ jobs:
             # Update dependencies
             helm dependency update "$chart"
             
-            # Package the chart
-            helm package "$chart" -d "$CHARTS_DIR"
-            
-            # Push to GHCR
-            helm push "${CHARTS_DIR}/${chart_name}-${new_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
-            
-            echo "Successfully pushed ${chart_name}:${new_version} to GHCR"
-            
-            # Create and push git tag
-            tag_name="${chart_name}-${new_version}"
-            if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
-              git tag "$tag_name"
-              git push origin "$tag_name"
-              echo "Created tag: $tag_name"
+            # Prepare bump branch + PR for this chart (no direct push to main)
+            branch_name="auto-bump/${chart_name}-${new_version}"
+            git checkout -b "$branch_name"
+            git add "$chart/Chart.yaml"
+            git commit -m "chore: auto-bump ${chart_name} to ${new_version}"
+            git push origin HEAD:$branch_name
+
+            # Create a pull request for the bump
+            pr_title="chore: auto-bump ${chart_name} to ${new_version}"
+            pr_body="This automated PR updates ${chart_name} to ${new_version}. CI will run and publishing will occur after merge."
+
+            # Use GitHub API to create the PR if it doesn't already exist
+            existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${branch_name}&state=open" | jq '. | length')
+
+            if [[ "$existing_pr" -eq 0 ]]; then
+              curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                -d "{\"title\":\"${pr_title}\",\"head\":\"${branch_name}\",\"base\":\"main\",\"body\":\"${pr_body}\"}" \
+                "https://api.github.com/repos/${{ github.repository }}/pulls"
             else
-              echo "Tag $tag_name already exists, skipping"
+              echo "PR for $branch_name already exists, skipping"
             fi
           done
           
           # Commit version bumps back to repo
-          if git diff --quiet; then
-            echo "No version changes to commit"
-          else
-            git add charts/*/Chart.yaml
-            git commit -m "chore: auto-bump chart versions [skip ci]"
-            git push origin main
-          fi
+          echo "Bump branches/PRs created for changed charts (no direct push to main)."
           
           rm -rf "$CHARTS_DIR"
 
@@ -219,3 +220,56 @@ jobs:
         if: always()
         run: |
           helm registry logout ghcr.io
+
+  publish-on-merge:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Install yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      - name: Package and publish charts from merged PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          echo "PR_NUMBER=$PR_NUMBER"
+
+          # Get files changed in PR
+          files=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/files" | jq -r '.[].filename')
+          echo "Files in PR:\n$files"
+
+          CHARTS_DIR=$(mktemp -d)
+          for f in $files; do
+            if [[ $f == charts/*/Chart.yaml ]]; then
+              chart_dir=$(echo "$f" | cut -d'/' -f2)
+              chart_path="charts/$chart_dir"
+              echo "Packaging $chart_dir"
+              current_version=$(yq eval '.version' "$chart_path/Chart.yaml")
+              echo "version: $current_version"
+              helm package "$chart_path" -d "$CHARTS_DIR"
+              helm push "${CHARTS_DIR}/${chart_dir}-${current_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
+              tag_name="${chart_dir}-${current_version}"
+              if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
+                git tag "$tag_name"
+                git push origin "$tag_name"
+                echo "Created tag: $tag_name"
+              else
+                echo "Tag $tag_name already exists, skipping"
+              fi
+            fi
+          done
+
+          rm -rf "$CHARTS_DIR"
