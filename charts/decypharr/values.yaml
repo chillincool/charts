@@ -87,6 +87,7 @@ readinessProbe:
 
 # Environment variables
 env: []
+envFrom: []
 
 # Persistence configuration
 # User must configure persistence - no defaults provided

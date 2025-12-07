@@ -58,6 +58,11 @@ spec:
               {{- end }}
               resources:
                 {{- include "common.resources" . | nindent 16 }}
+              {{- with .Values.envFrom }}
+              envFrom:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+
               {{- with .Values.env }}
               env:
                 {{- toYaml . | nindent 16 }}

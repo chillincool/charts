@@ -64,6 +64,7 @@ persistence: {}
 
 # Environment variables for script configuration
 env: []
+envFrom: []
 #   - name: DRY_RUN
 #     value: "false"
 #   - name: MIN_SIZE_MB

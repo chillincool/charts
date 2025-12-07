@@ -68,6 +68,7 @@ persistence: {}
 
 # Environment variables for Kometa configuration
 env: []
+envFrom: []
 #   - name: PLEX_URL
 #     value: "http://plex:32400"
 #   - name: PLEX_TOKEN
