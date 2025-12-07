@@ -124,39 +124,7 @@ jobs:
           
           CHARTS_DIR=$(mktemp -d)
           
-          # Process common chart first if it's in the list
-          if echo "$changed_charts" | grep -q "common"; then
-            echo "Processing common chart first..."
-            chart="charts/common"
-            current_version=$(yq eval '.version' "$chart/Chart.yaml")
-            echo "Common current version: $current_version"
-            
-            IFS='.' read -r major minor patch <<< "$current_version"
-            new_patch=$((patch + 1))
-            new_version="${major}.${minor}.${new_patch}"
-            echo "Common new version: $new_version"
-            
-            yq eval ".version = \"$new_version\"" -i "$chart/Chart.yaml"
-            
-            helm package "$chart" -d "$CHARTS_DIR"
-            helm push "${CHARTS_DIR}/common-${new_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
-            echo "Successfully pushed common:${new_version} to GHCR"
-            
-            tag_name="common-${new_version}"
-            if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
-              git tag "$tag_name"
-              git push origin "$tag_name"
-              echo "Created tag: $tag_name"
-            else
-              echo "Tag $tag_name already exists, skipping"
-            fi
-            
-            # We no longer update app charts inline here — dependent updates are handled by publish-on-merge
-            # Remove common from the list so we don't process it again
-            changed_charts=$(echo "$changed_charts" | sed 's/common//')
-          fi
-          
-          # Now process all other charts
+          # Now process all charts (no special handling for common)
           for chart_name in $changed_charts; do
             # Skip empty strings
             if [[ -z "$chart_name" ]]; then
@@ -334,11 +302,9 @@ jobs:
             fi
           done
 
-          # If we published common, create a grouped PR updating dependent charts
+          # If we published common, update dependent charts directly on main
           if [[ "$common_published" == true ]] && [[ -n "$common_version" ]]; then
-            DEP_BRANCH="auto-update-dependents/common-${common_version}-$(date -u +%Y%m%d%H%M)"
-            echo "Preparing dependent update branch: $DEP_BRANCH"
-            git checkout -b "$DEP_BRANCH"
+            echo "common_published=$common_published, common_version=$common_version"
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -347,8 +313,10 @@ jobs:
               if [[ "$app_chart" == "charts/common/Chart.yaml" ]]; then
                 continue
               fi
+              echo "Checking $app_chart for common dependency"
               if yq eval '.dependencies[] | select(.name == "common")' "$app_chart" > /dev/null 2>&1; then
                 dep_ver=$(yq eval '.dependencies[] | select(.name == "common") | .version' "$app_chart")
+                echo "Current dep_ver=$dep_ver for $app_chart"
                 if [[ "$dep_ver" != "$common_version" ]]; then
                   echo "Updating $app_chart common dependency: $dep_ver -> $common_version"
                   yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$common_version\"" -i "$app_chart"
@@ -359,26 +327,11 @@ jobs:
             done
 
             if [[ "$changed_any" == true ]]; then
-              git commit -m "chore(deps): update dependent charts to common ${common_version}"
-              git push origin HEAD:$DEP_BRANCH
-
-              # Create PR for dependent updates if none exists
-              dep_title="chore(deps): update charts to common ${common_version}"
-              dep_body="Automated PR to update all charts to depend on common:${common_version}."
-              existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${DEP_BRANCH}&state=open" | jq '. | length')
-              if [[ "$existing_pr" -eq 0 ]]; then
-                curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
-                  -d "{\"title\":\"${dep_title}\",\"head\":\"${DEP_BRANCH}\",\"base\":\"main\",\"body\":\"${dep_body}\"}" \
-                  "https://api.github.com/repos/${{ github.repository }}/pulls"
-              else
-                echo "Dependent update PR already exists for $DEP_BRANCH, skipping"
-              fi
+              git commit -m "chore(deps): update dependent charts to common ${common_version}" || echo "No changes to commit"
+              git push origin main || echo "Failed to push dependent updates to main"
             else
               echo "No dependent charts required updating"
             fi
-            # switch back to main to avoid detached state
-            git checkout main || true
           fi
 
           rm -rf "$CHARTS_DIR"
