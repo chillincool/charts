@@ -279,6 +279,26 @@ jobs:
           wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
 
+      - name: Authenticate to GHCR for publishing
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          set -e
+          echo "Attempting login to ghcr.io with GITHUB_TOKEN (actor: $GITHUB_ACTOR)"
+          if echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin >/dev/null 2>&1; then
+            echo "Authenticated with GITHUB_TOKEN"
+          else
+            echo "GITHUB_TOKEN login failed; attempting with GHCR_PAT if present"
+            if [[ -n "$GHCR_PAT" ]]; then
+              echo "$GHCR_PAT" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+              echo "Authenticated with GHCR_PAT"
+            else
+              echo "No GHCR_PAT secret found; continuing and will surface errors on push"
+            fi
+          fi
+
       - name: Package and publish charts from merged PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -304,7 +324,16 @@ jobs:
               helm dependency update "$chart_path" || { echo "helm dependency update failed for $chart_dir"; exit 1; }
               echo "version: $current_version"
               helm package "$chart_path" -d "$CHARTS_DIR"
-              helm push "${CHARTS_DIR}/${chart_dir}-${current_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
+              # Try pushing with retries
+              for i in 1 2 3; do
+                if helm push "${CHARTS_DIR}/${chart_dir}-${current_version}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts; then
+                  echo "Pushed ${chart_dir}:${current_version}"
+                  break
+                else
+                  echo "Push attempt $i failed, retrying..."
+                  sleep 2
+                fi
+              done
               tag_name="${chart_dir}-${current_version}"
               if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
                 git tag "$tag_name"
