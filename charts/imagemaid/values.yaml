@@ -1,0 +1,77 @@
+# Default values for imagemaid
+# Most defaults come from the common library chart
+# Only override what's specific to this app
+
+image:
+  registry: ghcr.io
+  repository: chillincool/imagemaid
+  tag: v1.1.1
+  pullPolicy: IfNotPresent
+
+# CronJob schedule - runs weekly on Sunday at 2am
+schedule: "0 2 * * 0"
+
+# CronJob settings
+concurrencyPolicy: Forbid
+successfulJobsHistoryLimit: 3
+failedJobsHistoryLimit: 3
+restartPolicy: OnFailure
+backoffLimit: 3
+
+# Resources - scripts typically need less resources
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Security contexts - omit to use common defaults (uid/gid 568)
+# Uncomment to override:
+# securityContext:
+#   runAsUser: 1000
+# podSecurityContext:
+#   fsGroup: 1000
+
+# ConfigMap for YAML config files
+# Define your config.yml content here and it will be mounted to /config
+# Example:
+# configMap:
+#   config.yml: |
+#     settings:
+#       dry_run: false
+#       min_size_mb: 100
+configMap: {}
+
+# Persistence configuration
+# ConfigMap handles /config, use persistence for data volumes
+# Example:
+# persistence:
+#   config:
+#     enabled: true
+#     type: configMap
+#     name: imagemaid-config  # Auto-created from configMap above
+#     globalMounts:
+#       - path: /config
+#   images:
+#     enabled: true
+#     type: pvc
+#     existingClaim: media-storage
+#     globalMounts:
+#       - path: /images
+persistence: {}
+
+# Environment variables for script configuration
+env: []
+envFrom: []
+#   - name: DRY_RUN
+#     value: "false"
+#   - name: MIN_SIZE_MB
+#     value: "100"
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""

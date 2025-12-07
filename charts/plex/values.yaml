@@ -1,24 +1,24 @@
-# Default values for sonarr
+# Default values for plex
 # Most defaults come from the common library chart
 # Only override what's specific to this app
 
 image:
   registry: ghcr.io
-  repository: chillincool/sonarr
-  tag: 4.0.16.2944
+  repository: chillincool/plex
+  tag: 1.41.3.9314-a0bfb8370
   pullPolicy: IfNotPresent
 
-# Sonarr listens on port 8989
-containerPort: 8989
+# Plex listens on port 32400
+containerPort: 32400
 
 service:
   type: ClusterIP
-  port: 8989
+  port: 32400
   targetPort: http
 
-# Override probe path if different from /ping (sonarr uses /ping)
-# probes:
-#   path: /ping
+# Plex uses /web for health checks
+probes:
+  path: /web
 
 # Ingress - disabled by default
 ingress:
@@ -26,21 +26,21 @@ ingress:
   className: ""
   annotations: {}
   hosts:
-    - host: sonarr.local
+    - host: plex.local
       paths:
         - path: /
           pathType: Prefix
   tls: []
 
-# Resources - omit to use common.defaultResources
+# Resources - use streaming defaults from common
 # Uncomment to override:
 # resources:
 #   requests:
-#     cpu: 100m
-#     memory: 256Mi
+#     cpu: 500m
+#     memory: 512Mi
 #   limits:
-#     cpu: 1
-#     memory: 1Gi
+#     cpu: 4
+#     memory: 4Gi
 
 # Security contexts - omit to use common defaults (uid/gid 568)
 # Uncomment to override:
@@ -56,10 +56,16 @@ ingress:
 #   config:
 #     enabled: true
 #     type: pvc
-#     existingClaim: sonarr-config
+#     existingClaim: plex-config
 #     globalMounts:
 #       - path: /config
-#         subPath: sonarr
+#   media:
+#     enabled: true
+#     type: pvc
+#     existingClaim: media-storage
+#     globalMounts:
+#       - path: /media
+#         readOnly: true
 persistence: {}
 
 # Autoscaling - disabled by default
@@ -69,14 +75,5 @@ autoscaling:
 # Service account
 serviceAccount:
   create: true
-
-# Additional settings
-nameOverride: ""
-fullnameOverride: ""
-imagePullSecrets: []
-podAnnotations: {}
-nodeSelector: {}
-tolerations: []
-affinity: {}
-env: []
-envFrom: []
+  annotations: {}
+  name: ""
