@@ -7,7 +7,7 @@
 # gid: 568
 
 # Test flag used by CI to trigger harmless changes for workflow testing
-ciTest: true
+ciTest: false
 
 # Timezone for containers
 timezone: "UTC"
