@@ -60,7 +60,9 @@ jobs:
           wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
           chmod +x /usr/local/bin/yq
           # Install jq for JSON parsing used by PR creation checks
-          apt-get update && apt-get install -y jq
+          # Download jq binary directly (no sudo required on GitHub hosted runners)
+          curl -sSL -o /usr/local/bin/jq https://github.com/stedolan/jq/releases/latest/download/jq-linux64
+          chmod +x /usr/local/bin/jq
 
       - name: Login to GitHub Container Registry
         run: |
