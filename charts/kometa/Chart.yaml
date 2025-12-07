@@ -2,7 +2,7 @@ apiVersion: v2
 name: kometa
 description: A Helm chart for Kometa - scheduled metadata management
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "latest"
 keywords:
   - kometa
