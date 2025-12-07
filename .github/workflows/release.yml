@@ -236,9 +236,7 @@ jobs:
           if [[ -n "$HEAD_REF" ]]; then
             if [[ "$HEAD_REF" == auto-bump/* ]] || [[ "$HEAD_REF" == auto-update-dependents/* ]]; then
               echo "Deleting remote branch: $HEAD_REF"
-              resp=$(curl -sS -X DELETE -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/$HEAD_REF" 2>&1) || true
-              echo "Delete response: $resp"
+              gh api "repos/${{ github.repository }}/git/refs/heads/$HEAD_REF" -X DELETE || echo "Branch deletion failed or branch already deleted"
             else
               echo "Skipping remote branch delete; head ref '$HEAD_REF' does not match auto-bump/auto-update pattern"
             fi
