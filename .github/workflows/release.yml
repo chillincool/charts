@@ -281,12 +281,8 @@ jobs:
         run: |
           set -e
           echo "Attempting login to ghcr.io with GITHUB_TOKEN (actor: $GITHUB_ACTOR)"
-          if echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin >/dev/null 2>&1; then
-            echo "Authenticated with GITHUB_TOKEN"
-          else
-            echo "GITHUB_TOKEN login failed; no GHCR_PAT fallback configured — continuing and will surface errors on push"
-          fi
-          fi
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin >/dev/null 2>&1
+          echo "Authenticated with GITHUB_TOKEN"
 
       - name: Package and publish charts from merged PR
         env:
@@ -364,12 +360,12 @@ jobs:
             done
 
             if [[ "$changed_any" == true ]]; then
-              git commit -m "chore(deps): update dependent charts to common ${current_version}"
+              git commit -m "chore(deps): update dependent charts to common ${common_version}"
               git push origin HEAD:$DEP_BRANCH
 
               # Create PR for dependent updates if none exists
-              dep_title="chore(deps): update charts to common ${current_version}"
-              dep_body="Automated PR to update all charts to depend on common:${current_version}."
+              dep_title="chore(deps): update charts to common ${common_version}"
+              dep_body="Automated PR to update all charts to depend on common:${common_version}."
               existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                 "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${DEP_BRANCH}&state=open" | jq '. | length')
               if [[ "$existing_pr" -eq 0 ]]; then
