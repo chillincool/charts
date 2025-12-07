@@ -272,4 +272,51 @@ jobs:
             fi
           done
 
+          # If we published common, create a grouped PR updating dependent charts
+          if [[ "$chart_dir" == "common" ]] && [[ -n "$current_version" ]]; then
+            DEP_BRANCH="auto-update-dependents/common-${current_version}-$(date -u +%Y%m%d%H%M)"
+            echo "Preparing dependent update branch: $DEP_BRANCH"
+            git checkout -b "$DEP_BRANCH"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            changed_any=false
+            for app_chart in charts/*/Chart.yaml; do
+              if [[ "$app_chart" == "charts/common/Chart.yaml" ]]; then
+                continue
+              fi
+              if yq eval '.dependencies[] | select(.name == "common")' "$app_chart" > /dev/null 2>&1; then
+                dep_ver=$(yq eval '.dependencies[] | select(.name == "common") | .version' "$app_chart")
+                if [[ "$dep_ver" != "$current_version" ]]; then
+                  echo "Updating $app_chart common dependency: $dep_ver -> $current_version"
+                  yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$current_version\"" -i "$app_chart"
+                  git add "$app_chart"
+                  changed_any=true
+                fi
+              fi
+            done
+
+            if [[ "$changed_any" == true ]]; then
+              git commit -m "chore(deps): update dependent charts to common ${current_version}"
+              git push origin HEAD:$DEP_BRANCH
+
+              # Create PR for dependent updates if none exists
+              dep_title="chore(deps): update charts to common ${current_version}"
+              dep_body="Automated PR to update all charts to depend on common:${current_version}."
+              existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${DEP_BRANCH}&state=open" | jq '. | length')
+              if [[ "$existing_pr" -eq 0 ]]; then
+                curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                  -d "{\"title\":\"${dep_title}\",\"head\":\"${DEP_BRANCH}\",\"base\":\"main\",\"body\":\"${dep_body}\"}" \
+                  "https://api.github.com/repos/${{ github.repository }}/pulls"
+              else
+                echo "Dependent update PR already exists for $DEP_BRANCH, skipping"
+              fi
+            else
+              echo "No dependent charts required updating"
+            fi
+            # switch back to main to avoid detached state
+            git checkout main || true
+          fi
+
           rm -rf "$CHARTS_DIR"
