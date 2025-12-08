@@ -70,3 +70,5 @@ serviceAccount:
   create: true
   annotations: {}
   name: ""
+
+ciTest: false

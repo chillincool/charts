@@ -3,7 +3,7 @@
 # Only override what's specific to this app
 
 # Test flag used by CI to trigger harmless changes for workflow testing
-ciTest: true
+ciTest: false
 
 image:
   registry: ghcr.io

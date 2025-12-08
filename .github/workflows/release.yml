@@ -373,13 +373,12 @@ jobs:
             fi
           done
 
-          # If we published common, update dependent charts directly on main
+          # If we published common, create bump PRs for dependent charts
           if [[ "$common_published" == true ]] && [[ -n "$common_version" ]]; then
             echo "common_published=$common_published, common_version=$common_version"
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            changed_any=false
             for app_chart in charts/*/Chart.yaml; do
               if [[ "$app_chart" == "charts/common/Chart.yaml" ]]; then
                 continue
@@ -391,18 +390,39 @@ jobs:
                 if [[ "$dep_ver" != "$common_version" ]]; then
                   echo "Updating $app_chart common dependency: $dep_ver -> $common_version"
                   yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$common_version\"" -i "$app_chart"
+                  
+                  # Bump the dependent's version
+                  current_ver=$(yq eval '.version' "$app_chart")
+                  IFS='.' read -r major minor patch <<< "$current_ver"
+                  new_patch=$((patch + 1))
+                  new_ver="${major}.${minor}.${new_patch}"
+                  echo "Bumping $app_chart version: $current_ver -> $new_ver"
+                  yq eval ".version = \"$new_ver\"" -i "$app_chart"
+                  
+                  # Create branch and PR
+                  chart_name=$(basename "$app_chart" .yaml)
+                  branch_name="auto-bump/${chart_name}-${new_ver}"
+                  git checkout -b "$branch_name"
                   git add "$app_chart"
-                  changed_any=true
+                  git commit -m "chore: auto-bump ${chart_name} to ${new_ver} for common ${common_version}"
+                  git push origin HEAD:$branch_name
+                  
+                  pr_title="chore: auto-bump ${chart_name} to ${new_ver}"
+                  pr_body="Automated PR to bump ${chart_name} for common ${common_version} update."
+                  existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                    "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${branch_name}&state=open" | jq '. | length')
+                  if [[ "$existing_pr" -eq 0 ]]; then
+                    curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                      -d "{\"title\":\"${pr_title}\",\"head\":\"${branch_name}\",\"base\":\"main\",\"body\":\"${pr_body}\"}" \
+                      "https://api.github.com/repos/${{ github.repository }}/pulls" || echo "Failed to create PR for $chart_name"
+                  else
+                    echo "PR for $branch_name already exists, skipping"
+                  fi
+                  
+                  git checkout main
                 fi
               fi
             done
-
-            if [[ "$changed_any" == true ]]; then
-              git commit -m "chore(deps): update dependent charts to common ${common_version}" || echo "No changes to commit"
-              git push origin main || echo "Failed to push dependent updates to main"
-            else
-              echo "No dependent charts required updating"
-            fi
           fi
 
           rm -rf "$CHARTS_DIR"
