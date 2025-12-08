@@ -153,6 +153,37 @@ jobs:
               echo "Tag $tag_name already exists, skipping"
             fi
             
+            # Create bump branch and PR for common
+            branch_name="auto-bump/common-${new_version}"
+            git checkout -b "$branch_name"
+            git add "$chart/Chart.yaml"
+            git commit -m "chore: auto-bump common to ${new_version}"
+            git push origin HEAD:$branch_name
+
+            pr_title="chore: auto-bump common to ${new_version}"
+            pr_body="This automated PR updates common to ${new_version}. CI will run and publishing will occur after merge."
+
+            existing_pr=$(curl -sS -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls?head=${{ github.repository_owner }}:${branch_name}&state=open" | jq '. | length' 2>/dev/null || echo 0)
+
+            if [[ "$existing_pr" -eq 0 ]]; then
+              echo "Creating PR: $pr_title"
+              resp=$(curl -sS -w "%{http_code}" -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                -d "{\"title\":\"${pr_title}\",\"head\":\"${branch_name}\",\"base\":\"main\",\"body\":\"${pr_body}\"}" \
+                "https://api.github.com/repos/${{ github.repository }}/pulls") || true
+
+              http_code=$(echo "$resp" | tail -c 4)
+              body=$(echo "$resp" | sed -e 's/.\{3\}$//')
+              echo "PR API response code: $http_code"
+              if [[ "$http_code" == "201" ]]; then
+                echo "PR created successfully"
+              else
+                echo "PR creation failed: $body"
+              fi
+            else
+              echo "PR for $branch_name already exists (count=$existing_pr), skipping"
+            fi
+            
             # Remove common from the list so we don't process it again
             changed_charts=$(echo "$changed_charts" | sed 's/common//')
           fi
