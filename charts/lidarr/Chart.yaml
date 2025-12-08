@@ -2,7 +2,7 @@ apiVersion: v2
 name: lidarr
 description: A Helm chart for Lidarr - A music collection manager for Usenet and BitTorrent users
 type: application
-version: 0.2.4
+version: 0.2.5
 # Updated: 2025-11-30 v3
 appVersion: "67c49d9740a44996c5b6108e38d1d1987abd125f"
 keywords:
@@ -18,5 +18,5 @@ maintainers:
   - name: chillincool
 dependencies:
   - name: common
-    version: 1.1.5
+    version: 1.1.6
     repository: file://../common
