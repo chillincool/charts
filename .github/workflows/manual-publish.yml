@@ -1,0 +1,185 @@
+name: Manual Publish Charts
+
+on:
+  workflow_dispatch:
+    inputs:
+      charts:
+        description: 'Charts to publish (comma-separated, e.g., "radarr,sonarr" or "all" for all charts)'
+        required: true
+        type: string
+      skip_version_bump:
+        description: 'Skip version bump (publish current versions)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  manual-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Install yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Publish Charts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          input_charts="${{ github.event.inputs.charts }}"
+          skip_bump="${{ github.event.inputs.skip_version_bump }}"
+
+          CHARTS_DIR=$(mktemp -d)
+
+          # Determine which charts to publish
+          if [[ "$input_charts" == "all" ]]; then
+            charts_to_publish=$(ls -d charts/*/ | xargs -n1 basename)
+          else
+            # Split comma-separated list
+            charts_to_publish=$(echo "$input_charts" | tr ',' ' ')
+          fi
+
+          echo "Charts to publish: $charts_to_publish"
+
+          # Process common first if it's in the list
+          common_new_version=""
+          if echo "$charts_to_publish" | grep -qw "common"; then
+            chart="charts/common"
+            current_version=$(yq eval '.version' "$chart/Chart.yaml")
+
+            if [[ "$skip_bump" == "false" ]]; then
+              echo "Bumping common version"
+              IFS='.' read -r major minor patch <<< "$current_version"
+              new_patch=$((patch + 1))
+              new_version="${major}.${minor}.${new_patch}"
+              common_new_version="$new_version"
+              yq eval ".version = \"$new_version\"" -i "$chart/Chart.yaml"
+              version_to_publish="$new_version"
+            else
+              version_to_publish="$current_version"
+            fi
+
+            echo "Publishing common:${version_to_publish}"
+            helm package "$chart" -d "$CHARTS_DIR"
+            helm push "${CHARTS_DIR}/common-${version_to_publish}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts
+
+            tag_name="common-${version_to_publish}"
+            if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
+              git tag "$tag_name"
+              git push origin "$tag_name"
+              echo "Created tag: $tag_name"
+            else
+              echo "Tag $tag_name already exists, skipping"
+            fi
+
+            # Remove common from list
+            charts_to_publish=$(echo "$charts_to_publish" | sed 's/\bcommon\b//')
+          fi
+
+          # Process other charts
+          for chart_name in $charts_to_publish; do
+            # Skip empty strings
+            if [[ -z "$chart_name" ]]; then
+              continue
+            fi
+
+            chart="charts/$chart_name"
+
+            if [[ ! -f "$chart/Chart.yaml" ]]; then
+              echo "Skipping $chart_name - not a valid chart"
+              continue
+            fi
+
+            current_version=$(yq eval '.version' "$chart/Chart.yaml")
+
+            if [[ "$skip_bump" == "false" ]]; then
+              echo "Bumping $chart_name version"
+              IFS='.' read -r major minor patch <<< "$current_version"
+              new_patch=$((patch + 1))
+              new_version="${major}.${minor}.${new_patch}"
+              yq eval ".version = \"$new_version\"" -i "$chart/Chart.yaml"
+              version_to_publish="$new_version"
+
+              # Update common dependency if common was bumped
+              if [[ -n "$common_new_version" ]]; then
+                if yq eval '.dependencies[] | select(.name == "common")' "$chart/Chart.yaml" > /dev/null 2>&1; then
+                  yq eval "(.dependencies[] | select(.name == \"common\") | .version) = \"$common_new_version\"" -i "$chart/Chart.yaml"
+                fi
+              fi
+            else
+              version_to_publish="$current_version"
+            fi
+
+            echo "Publishing $chart_name:${version_to_publish}"
+            helm dependency update "$chart"
+            helm package "$chart" -d "$CHARTS_DIR"
+
+            # Try pushing with retries
+            for i in 1 2 3; do
+              if helm push "${CHARTS_DIR}/${chart_name}-${version_to_publish}.tgz" oci://ghcr.io/${{ github.repository_owner }}/charts; then
+                echo "Pushed ${chart_name}:${version_to_publish}"
+                break
+              else
+                echo "Push attempt $i failed, retrying..."
+                sleep 2
+              fi
+            done
+
+            tag_name="${chart_name}-${version_to_publish}"
+            if ! git rev-parse "$tag_name" >/dev/null 2>&1; then
+              git tag "$tag_name"
+              git push origin "$tag_name"
+              echo "Created tag: $tag_name"
+            else
+              echo "Tag $tag_name already exists, skipping"
+            fi
+          done
+
+          # Commit version bumps if we bumped versions
+          if [[ "$skip_bump" == "false" ]]; then
+            if git diff --quiet; then
+              echo "No changes to commit"
+            else
+              git add charts/*/Chart.yaml
+              git commit -m "chore: manual bump chart versions via workflow
+
+Published charts: $input_charts
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+              git push origin main
+              echo "Committed and pushed version bumps to main"
+            fi
+          fi
+
+          rm -rf "$CHARTS_DIR"
+
+      - name: Logout from GitHub Container Registry
+        if: always()
+        run: |
+          helm registry logout ghcr.io
