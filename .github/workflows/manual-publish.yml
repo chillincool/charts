@@ -165,13 +165,10 @@ jobs:
               echo "No changes to commit"
             else
               git add charts/*/Chart.yaml
-              git commit -m "chore: manual bump chart versions via workflow
-
-Published charts: $input_charts
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+              git commit -m "chore: manual bump chart versions via workflow" \
+                -m "Published charts: $input_charts" \
+                -m "🤖 Generated with [Claude Code](https://claude.com/claude-code)" \
+                -m "Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
               git push origin main
               echo "Committed and pushed version bumps to main"
             fi
