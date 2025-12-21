@@ -68,7 +68,9 @@ probes: {}
   # path: /ping
 
 # Environment variables
-env: []
+env:
+  - name: HUNTARR_PORT
+    value: "8080"
 envFrom: []
 
 # Persistence configuration
