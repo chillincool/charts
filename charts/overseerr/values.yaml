@@ -5,7 +5,7 @@
 image:
   registry: ghcr.io
   repository: chillincool/overseerr
-  tag: 1.33.2
+  tag: v1.34.0
   pullPolicy: IfNotPresent
 
 # Overseerr listens on port 5055
