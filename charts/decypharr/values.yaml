@@ -6,7 +6,7 @@ image:
   repository: chillincool/decypharr
   # tag defaults to appVersion from Chart.yaml if not specified
   # For production, use a specific SHA or version tag, e.g., "sha-abc123"
-  tag: 0.1.0
+  tag: v1.1.6
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
