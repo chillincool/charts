@@ -2,7 +2,7 @@ apiVersion: v2
 name: tautulli
 description: A Helm chart for Tautulli
 type: application
-version: 0.2.4
+version: 0.2.5
 # Updated: 2025-11-30 v3
 appVersion: "latest"
 keywords:
