@@ -100,3 +100,64 @@ ingress:
   annotations: {}
   hosts: []
   tls: []
+
+# HTTPRoute configuration (Gateway API / envoy-gateway)
+httpRoute:
+  enabled: false
+  # Gateway reference
+  parentRefs:
+    - name: ""
+      namespace: ""
+  # Hostnames this HTTPRoute should match
+  hostnames: []
+  # Rules for routing traffic
+  rules: []
+  # Example:
+  # parentRefs:
+  #   - name: eg
+  #     namespace: envoy-gateway-system
+  # hostnames:
+  #   - radarr.example.com
+  # rules:
+  #   - matches:
+  #       - path:
+  #           type: PathPrefix
+  #           value: /
+  #     backendRefs:
+  #       - name: radarr  # Will be auto-filled with service name
+  #         port: 7878
+
+# NetworkPolicy configuration
+networkPolicy:
+  enabled: false
+  # Policy types to enforce
+  policyTypes:
+    - Ingress
+    - Egress
+  # Ingress rules
+  ingress: []
+  # Example:
+  # - from:
+  #   - namespaceSelector:
+  #       matchLabels:
+  #         kubernetes.io/metadata.name: envoy-gateway-system
+  #   ports:
+  #   - protocol: TCP
+  #     port: 7878
+  # Egress rules
+  egress: []
+  # Example - Allow DNS and specific external services:
+  # - to:
+  #   - namespaceSelector:
+  #       matchLabels:
+  #         kubernetes.io/metadata.name: kube-system
+  #   ports:
+  #   - protocol: UDP
+  #     port: 53
+  # - to:
+  #   - podSelector:
+  #       matchLabels:
+  #         app: prowlarr
+  #   ports:
+  #   - protocol: TCP
+  #     port: 9696

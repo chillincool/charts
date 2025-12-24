@@ -108,3 +108,93 @@ spec:
     {{- end }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Common HTTPRoute template (Gateway API)
+*/}}
+{{- define "common.httpRoute" -}}
+{{- if .Values.httpRoute.enabled -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "common.fullname" . }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.httpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- if .Values.httpRoute.rules }}
+    {{- range .Values.httpRoute.rules }}
+    - matches:
+        {{- toYaml .matches | nindent 8 }}
+      {{- if .backendRefs }}
+      backendRefs:
+        {{- range .backendRefs }}
+        - name: {{ .name | default (include "common.fullname" $) }}
+          {{- if .port }}
+          port: {{ .port }}
+          {{- else }}
+          port: {{ $.Values.service.port | default 80 }}
+          {{- end }}
+          {{- with .weight }}
+          weight: {{ . }}
+          {{- end }}
+        {{- end }}
+      {{- else }}
+      backendRefs:
+        - name: {{ include "common.fullname" $ }}
+          port: {{ $.Values.service.port | default 80 }}
+      {{- end }}
+      {{- with .filters }}
+      filters:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- else }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: {{ include "common.fullname" . }}
+          port: {{ .Values.service.port | default 80 }}
+    {{- end }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Common NetworkPolicy template
+*/}}
+{{- define "common.networkPolicy" -}}
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "common.fullname" . }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "common.selectorLabels" . | nindent 6 }}
+  {{- with .Values.networkPolicy.policyTypes }}
+  policyTypes:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.networkPolicy.ingress }}
+  ingress:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.networkPolicy.egress }}
+  egress:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end -}}
+{{- end -}}
