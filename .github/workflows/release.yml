@@ -140,6 +140,21 @@ jobs:
 
             # Remove common from the list so we don't process it again
             changed_charts=$(echo "$changed_charts" | sed 's/common//')
+
+            # If common changed, add all dependent charts to the list
+            echo "Common changed - adding all dependent charts to update list"
+            for app_chart in charts/*/Chart.yaml; do
+              if [[ "$app_chart" == "charts/common/Chart.yaml" ]]; then
+                continue
+              fi
+              chart_name=$(basename $(dirname "$app_chart"))
+              # Only add if not already in the list
+              if ! echo "$changed_charts" | grep -qw "$chart_name"; then
+                changed_charts="$changed_charts $chart_name"
+              fi
+            done
+            changed_charts=$(echo "$changed_charts" | xargs)
+            echo "Updated changed_charts list: $changed_charts"
           fi
 
           # Collect all chart updates
