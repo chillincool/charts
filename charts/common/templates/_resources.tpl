@@ -66,6 +66,7 @@ metadata:
 Common Ingress template
 */}}
 {{- define "common.ingress" -}}
+{{- if .Values.ingress }}
 {{- if .Values.ingress.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -108,11 +109,13 @@ spec:
     {{- end }}
 {{- end -}}
 {{- end -}}
+{{- end -}}
 
 {{/*
 Common HTTPRoute template (Gateway API)
 */}}
 {{- define "common.httpRoute" -}}
+{{- if .Values.httpRoute }}
 {{- if .Values.httpRoute.enabled -}}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -168,11 +171,13 @@ spec:
     {{- end }}
 {{- end -}}
 {{- end -}}
+{{- end -}}
 
 {{/*
 Common NetworkPolicy template
 */}}
 {{- define "common.networkPolicy" -}}
+{{- if .Values.networkPolicy }}
 {{- if .Values.networkPolicy.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -196,5 +201,6 @@ spec:
   egress:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+{{- end -}}
 {{- end -}}
 {{- end -}}
