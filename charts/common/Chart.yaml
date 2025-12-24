@@ -2,7 +2,7 @@ apiVersion: v2
 name: common
 description: Common library chart with reusable templates and defaults
 type: library
-version: 1.1.7
+version: 1.1.8
 # Updated: 2025-12-24 v4
 appVersion: "1.0.0"
 keywords:
