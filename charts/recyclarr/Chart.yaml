@@ -2,7 +2,7 @@ apiVersion: v2
 name: recyclarr
 description: A Helm chart for Recyclarr - automated quality profile management for Radarr/Sonarr
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "latest"
 keywords:
   - recyclarr
