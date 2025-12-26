@@ -8,7 +8,7 @@ ciTest: false
 image:
   registry: ghcr.io
   repository: chillincool/recyclarr
-  tag: latest
+  tag: 7.5.2
   pullPolicy: IfNotPresent
 
 # CronJob schedule - runs weekly on Sunday at 3am
