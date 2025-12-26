@@ -1,0 +1,74 @@
+# Default values for recyclarr
+# Most defaults come from the common library chart
+# Only override what's specific to this app
+
+# Test flag used by CI to trigger harmless changes for workflow testing
+ciTest: false
+
+image:
+  registry: ghcr.io
+  repository: chillincool/recyclarr
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# CronJob schedule - runs weekly on Sunday at 3am
+schedule: "0 3 * * 0"
+
+# CronJob settings
+concurrencyPolicy: Forbid
+successfulJobsHistoryLimit: 3
+failedJobsHistoryLimit: 3
+restartPolicy: OnFailure
+backoffLimit: 3
+
+# Resources - scripts typically need less resources
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Security contexts - omit to use common defaults (uid/gid 568)
+# Uncomment to override:
+# securityContext:
+#   runAsUser: 1000
+# podSecurityContext:
+#   fsGroup: 1000
+
+# ConfigMap for YAML config files
+# Define your recyclarr.yml content here and it will be mounted to /config
+# Example:
+# configMap:
+#   recyclarr.yml: |
+#     radarr:
+#       instance:
+#         - name: radarr
+#           api_key: YOUR_API_KEY
+#           url: http://radarr:7878
+configMap: {}
+
+# Persistence configuration
+# ConfigMap handles /config, use persistence for data volumes
+# Example:
+# persistence:
+#   config:
+#     enabled: true
+#     type: configMap
+#     name: recyclarr-config  # Auto-created from configMap above
+#     globalMounts:
+#       - path: /config
+persistence: {}
+
+# Environment variables for script configuration
+env: []
+envFrom: []
+#   - name: RECYCLARR_CONFIG
+#     value: "/config/recyclarr.yml"
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
