@@ -2,7 +2,7 @@ apiVersion: v2
 name: kometa
 description: A Helm chart for Kometa - scheduled metadata management
 type: application
-version: 0.1.6
+version: 0.1.7
 appVersion: "latest"
 keywords:
   - kometa
@@ -17,5 +17,5 @@ maintainers:
   - name: chillincool
 dependencies:
   - name: common
-    version: 1.1.8
+    version: 1.1.10
     repository: file://../common
