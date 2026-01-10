@@ -86,6 +86,17 @@ serviceAccount:
   annotations: {}
   name: ""
 
+# Deployment strategy configuration
+# strategy:
+#   type: RollingUpdate
+#   rollingUpdate:
+#     maxSurge: 1
+#     maxUnavailable: 0
+#
+# For single-replica apps with persistent volumes, use Recreate:
+# strategy:
+#   type: Recreate
+
 # Autoscaling configuration
 autoscaling:
   enabled: false
